@@ -1,1 +1,443 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1B1650"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Carnet — Gestion d’école</title>
+<style>
+:root{--bg:#F3F5F8;--card:#fff;--ink:#14213D;--mut:#5B6678;--acc:#14213D;--on:#fff;--line:#DDE3EC;--margin:#C8102E;--ok:#1F8A5B;--err:#B42318;--serif:"Iowan Old Style","Noto Serif",Georgia,serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0E1626;--card:#16213A;--ink:#EAF0FB;--mut:#9FB0C9;--acc:#8FB4FF;--on:#0E1626;--line:#27355A;--margin:#FF6B7F;--ok:#4FD1A0;--err:#FF9A8F}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:780px;margin:0 auto;padding:8px 16px 48px 30px;position:relative;min-height:100vh}
+main::before{content:"";position:absolute;left:15px;top:0;bottom:0;width:2px;background:var(--margin);opacity:.5}
+h1{font:700 28px/1.2 var(--serif);margin:14px 0 2px}h2{font:700 19px/1.3 var(--serif);margin:20px 0 8px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.brand{font:700 24px var(--serif)}.hd .mut{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+input,select,button,textarea{font:inherit;width:100%;min-height:44px;padding:10px 12px;margin:4px 0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+button{background:var(--acc);color:var(--on);border:0;font-weight:600;cursor:pointer}button.ghost{background:none;color:var(--ink);border:1px solid var(--line)}button.sm{width:auto;min-height:36px;padding:6px 14px}
+:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 140px}
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:12px;scrollbar-width:none}
+.tabs button{width:auto;white-space:nowrap;background:none;color:var(--mut);border:0;border-bottom:3px solid transparent;border-radius:0;margin:0;padding:10px 12px}
+.tabs button:not(.ghost){color:var(--ink);border-bottom-color:var(--margin)}
+.mut{color:var(--mut);font-size:14px}.err{color:var(--err);min-height:1.2em}.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:12px 0}
+.stat{display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:auto;min-height:0;margin:0;padding:14px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;font-weight:500}
+.stat .n{font:700 36px/1 var(--serif)}.stat .l{color:var(--mut);font-size:14px;margin-top:6px}.stat .s{color:var(--margin);font-size:13px;font-weight:600;margin-top:2px}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:var(--ok)}
+.li{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line)}.li:first-of-type{border-top:0}.li b{min-width:92px;font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:no-preference){.card,.stat{transition:border-color .15s}.stat:hover{border-color:var(--margin)}}
+@media print{.hd,.tabs,button,select{display:none}main::before{display:none}}
 
+.bar-top{display:flex;align-items:center;gap:2px;padding:6px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.bar-top .pt{flex:1;font:700 19px var(--serif);padding-left:6px}.ib{width:44px;height:44px;background:none;color:var(--ink);padding:0;display:grid;place-items:center;margin:0;position:relative}
+.dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--margin)}
+.ov{position:fixed;inset:0;background:rgba(10,8,40,.5);opacity:0;pointer-events:none;z-index:20}.ov.open{opacity:1;pointer-events:auto}
+.dr{position:fixed;left:0;top:0;bottom:0;width:min(310px,84vw);display:flex;flex-direction:column;background:linear-gradient(165deg,#2b2178,#1b1650 55%,#18123f);color:#fff;transform:translateX(-105%);z-index:21;overflow:hidden}.dr.open{transform:none}
+@media(prefers-reduced-motion:no-preference){.dr{transition:transform .22s}.ov{transition:opacity .22s}}
+.dr .bd{padding:22px 20px 12px}.dr .bd b{font:700 32px var(--serif);display:flex;align-items:center;gap:12px}.dr .bd p{margin:10px 0 0;color:#C9C3F5;font-size:15px;line-height:1.35}
+.dr .it{flex:1;overflow-y:auto;padding:6px 12px}
+.ni{display:flex;gap:14px;align-items:center;width:100%;background:none;color:#D9D4FF;border:0;border-radius:12px;padding:10px 14px;margin:2px 0;font-size:17px;text-align:left;min-height:48px}.ni.on{background:#fff;color:#1B1650;font-weight:600}.ni .bg{margin-left:auto;background:#FF6B7F;color:#fff;border-radius:10px;padding:0 8px;font-size:13px;font-weight:700}
+.uc{background:rgba(255,255,255,.1);border-radius:14px;padding:12px;margin:10px 12px 14px}.uc .u{display:flex;gap:12px;align-items:center;margin-bottom:10px}.uc .av{width:44px;height:44px;flex:none;border-radius:50%;background:#6C4FD8;display:grid;place-items:center;font-weight:700}.uc small{display:block;color:#C9C3F5}
+.out{display:flex;gap:8px;justify-content:center;align-items:center;background:none;color:#fff;border:1px solid rgba(255,255,255,.3);margin:0}
+.seg{display:flex;gap:6px;margin:12px 0}.seg button{flex:1;width:auto}
+.bub{max-width:85%;padding:8px 12px;border-radius:14px;margin:6px 0;background:var(--card);border:1px solid var(--line);white-space:pre-wrap}.bub.me{margin-left:auto;background:var(--acc);color:var(--on);border-color:transparent}.bub small{display:block;opacity:.7;font-size:12px}
+@media print{.bar-top,.dr,.ov{display:none}}
+</style></head><body><main id="app"></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SB=supabase.createClient("https://lwdjfvulsixevexpiexg.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3ZGpmdnVsc2l4ZXZleHBpZXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDI4OTksImV4cCI6MjEwOTExODg5OX0.gds7lS25_3E_MmXGkSB76jYFKJrmeXM9j8NIzdY_0Ow");
+const app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ROLES={parent:'Parent',student:'Élève',teacher:'Professeur',admin:'Direction'};
+const mail=v=>{v=v.trim().toLowerCase();return v.includes('@')?v:v+'@carnet-ecole.gn'};
+let me=null,tab='dash',mode='in',CFG={school_name:'',school_year:''},ISP=false,PS={price_monthly:0,price_annual:0,payment_instructions:''};
+
+function authView(msg=''){
+ const up=mode==='up';
+ app.innerHTML=`<h1>Carnet</h1><p class="mut">Gestion d’école</p><div class="card">
+ <div class="row"><button class="${up?'ghost':''}" onclick="mode='in';authView()">Connexion</button><button class="${up?'':'ghost'}" onclick="mode='up';authView()">Créer un compte</button></div>
+ ${up?`<input id="nm" placeholder="Nom complet" autocomplete="name"><select id="rr" onchange="const a=this.value==='admin';document.getElementById('sc').style.display=a?'none':'block';document.getElementById('sno').style.display=a?'block':'none'"><option value="parent">Je suis parent</option><option value="student">Je suis élève</option><option value="teacher">Je suis professeur</option><option value="admin">Je dirige une école (créer mon école)</option></select><input id="ph" placeholder="Téléphone" inputmode="tel">`:''}
+ <input id="id" placeholder="E-mail ou identifiant" autocomplete="username" autocapitalize="none">
+ <input id="pw" type="password" placeholder="Mot de passe${up?' (8 caractères min.)':''}" autocomplete="${up?'new-password':'current-password'}">
+ ${up?`<input id="sc" placeholder="Code de l’école (donné par la direction)" autocapitalize="characters"><input id="sno" style="display:none" placeholder="Nom de votre école">`:''}
+ <p class="err" id="er">${esc(msg)}</p><button id="go">${up?'Créer mon compte':'Se connecter'}</button></div>`;
+ document.getElementById('go').onclick=async e=>{
+  const g=s=>document.getElementById(s)?.value||'',er=document.getElementById('er');
+  const email=mail(g('id')),password=g('pw');er.textContent='';
+  if(!g('id')||!password)return er.textContent='Renseignez l’identifiant et le mot de passe.';
+  e.target.disabled=true;let r;
+  if(up){
+   if(password.length<8){e.target.disabled=false;return er.textContent='Mot de passe : 8 caractères minimum.'}
+   if(g('rr')==='admin'?g('sno').trim().length<3:!g('sc').trim()){e.target.disabled=false;return er.textContent=g('rr')==='admin'?'Indiquez le nom de votre école.':'Saisissez le code de votre école.'}
+   if(g('nm').trim().length<3){e.target.disabled=false;return er.textContent='Indiquez votre nom complet.'}
+   r=await SB.auth.signUp({email,password,options:{data:{full_name:g('nm').trim(),requested_role:g('rr'),phone:g('ph').trim(),school_code:g('rr')==='admin'?'':g('sc').trim(),school_name:g('rr')==='admin'?g('sno').trim():''}}});
+   if(!r.error)r=await SB.auth.signInWithPassword({email,password});
+  }else r=await SB.auth.signInWithPassword({email,password});
+  e.target.disabled=false;
+  if(r.error)return er.textContent=r.error.message.includes('Invalid login')?'Identifiant ou mot de passe incorrect.':r.error.message.includes('Database error')?(up&&g('rr')!=='admin'?'Code école invalide, ou école non activée. Demandez le code à la direction de votre école.':'Impossible de créer le compte : vérifiez les informations (cet identifiant existe peut-être déjà).'):r.error.message;
+  load();
+ };
+}
+async function load(){
+ const{data:{user}}=await SB.auth.getUser();if(!user)return authView();
+ const{data,error}=await SB.from('profiles').select('*').eq('id',user.id).single();
+ if(error||!data){await SB.auth.signOut();return authView('Compte introuvable.')}
+ me=data;{const c=await SB.from('schools').select('*').maybeSingle();if(c.data)CFG={id:c.data.id,school_name:c.data.name,school_year:c.data.year,join_code:c.data.join_code,status:c.data.status,paid_until:c.data.paid_until,plan:c.data.plan};ISP=(await SB.rpc('is_platform')).data===true;const ps=await SB.from('platform_settings').select('*').maybeSingle();if(ps.data)PS=ps.data}render();
+}
+const out=()=>SB.auth.signOut().then(()=>{me=null;mode='in';authView()});
+const head=()=>`<header class="hd"><div><span class="brand">Carnet</span><span class="mut">${esc(me.full_name)} · ${ROLES[me.role]||'En attente'}</span></div><button class="ghost sm" onclick="out()">Quitter</button></header>`;
+
+const IC={"globe":"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20","sliders":"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6","menu": "M4 6h16M4 12h16M4 18h16", "help": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01", "bell": "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0", "cap": "M22 10 12 5 2 10l10 5zM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6", "out": "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5M21 12H9", "home": "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", "users": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8", "uplus": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6", "card": "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6M7 20c.5-2.5 2.5-4 5-4s4.5 1.5 5 4", "layers": "m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5", "cal": "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "pen": "M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4M2 6h4M2 10h4M2 14h4M2 18h4M21.4 5.6a2 2 0 0 0-3-3L11 10l-1 4 4-1z", "file": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2", "book": "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z", "check": "M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m1 10 2 2 4-4", "wallet": "M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5M16 13h2", "msg": "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "mega": "m3 11 18-5v12L3 13zM11.6 16.8a3 3 0 1 1-5.8-1.6"};
+const ic=(k,z=22)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+const D=['dash','Tableau de bord','home'],TT_=['ttb','Emploi du temps','cal'],BU=['bul','Bulletins','file'],HW_=['hw','Devoirs','book'],AR_=['ar','Absences & retards','check'],FE_=['fee','Frais & paiements','wallet'],MS=['msg','Messagerie','msg'],AN=['ann','Annonces','mega'];
+const NAV={admin:[D,['req','Demandes d’inscription','uplus'],['stu','Élèves','users'],['tch','Professeurs','card'],['cm','Classes & matières','layers'],TT_,BU,HW_,AR_,FE_,MS,AN,['abo','Abonnement','card'],['set','Paramètres','sliders']],
+ teacher:[D,['stu','Mes élèves','users'],TT_,['not','Notes','pen'],BU,HW_,AR_,MS,AN],
+ student:[D,['stu','Ma fiche','users'],TT_,BU,HW_,AR_,FE_,MS,AN],
+ parent:[D,['stu','Mes enfants','users'],TT_,BU,HW_,AR_,FE_,MS,AN]};
+const drawer=o=>{document.getElementById('dr').classList.toggle('open',!!o);document.getElementById('ov').classList.toggle('open',!!o)};
+function render(){
+ if(me.role==='pending'){app.innerHTML=head()+`<div class="card"><h2>Compte en attente</h2><p>Votre demande est enregistrée. La direction doit la valider et vous rattacher à votre fiche. Revenez plus tard.</p><button onclick="load()">Actualiser</button></div>`;return}
+ const st=sstate();
+ if(st==='blocked'&&!ISP){app.innerHTML=head()+'<div id="body"></div>';if(me.role==='admin')showPlan();else B().innerHTML='<div class="card"><h2>École non active</h2><p>L’abonnement de votre école n’est pas actif. Contactez la direction de votre école.</p></div>';return}
+ const banner=st==='grace'?`<div class="card" style="border-color:var(--margin)"><b>Abonnement expiré</b> : lecture seule.${me.role==='admin'?` <button class="ghost sm" onclick="go('abo')">Renouveler</button>`:' Prévenez la direction.'}</div>`:'';
+ const N=[...NAV[me.role],...(ISP?[['plat','Plateforme','globe']]:[])];if(!N.some(x=>x[0]===tab))tab=N[0][0];
+ const cur=N.find(x=>x[0]===tab),ini=me.full_name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+ app.innerHTML=`<div class="bar-top"><button class="ib" onclick="drawer(1)" aria-label="Ouvrir le menu">${ic('menu')}</button><b class="pt">${esc(cur[1])}</b><button class="ib" onclick="alert('Besoin d’aide ? Écrivez à la direction depuis la Messagerie.')" aria-label="Aide">${ic('help')}</button><button class="ib" onclick="go('ann')" aria-label="Annonces">${ic('bell')}<i class="dot" id="dot" hidden></i></button></div>
+ <div id="ov" class="ov" onclick="drawer(0)"></div><nav id="dr" class="dr" aria-label="Menu principal"><div class="bd"><b>${ic('cap',30)}Carnet</b><p>${esc(CFG.school_name||'École à nommer')}${CFG.school_year?'<br>Année '+esc(CFG.school_year):''}</p></div>
+ <div class="it">${N.map(([k,l,i])=>`<button class="ni ${k===tab?'on':''}" onclick="go('${k}')">${ic(i)}<span>${esc(l)}</span>${k==='req'?'<span class="bg" id="pc" hidden></span>':''}</button>`).join('')}</div>
+ <div class="uc"><div class="u"><span class="av">${esc(ini)}</span><div><b>${esc(me.full_name)}</b><small>${ROLES[me.role]}</small></div></div><button class="out" onclick="out()">${ic('out',20)}Changer de compte</button></div></nav>${banner}<div id="body"></div>`;
+ ({dash:showDash,req:showReq,stu:()=>showStudents(me.role==='admin'),tch:showTeachers,cm:showCM,ttb:showTT,not:showNotes,bul:showBulletin,hw:showHW,ar:showAR,fee:showFees,msg:showMsg,ann:showAnn,set:showSettings,abo:showPlan,plat:showPlatform})[tab]();
+ SB.from('announcements').select('created_at').order('created_at',{ascending:false}).limit(1).then(({data})=>{const t=data?.[0]?.created_at;let sn=0;try{sn=localStorage.getItem('annSeen')||0}catch{}if(t&&new Date(t)>new Date(sn))document.getElementById('dot')?.removeAttribute('hidden')});
+ if(me.role==='admin')SB.from('profiles').select('*',{count:'exact',head:true}).eq('role','pending').then(r=>{const e=document.getElementById('pc');if(e&&r.count){e.textContent=r.count;e.hidden=false}});
+}
+const B=()=>document.getElementById('inner')||document.getElementById('body'),opt=(a,f)=>a.map(x=>`<option value="${esc(x.id)}">${esc(f(x))}</option>`).join('');
+const nm=x=>`${x.first_name} ${x.last_name}`;
+
+/* Demandes (direction) */
+let PEND=[],PPL={};
+async function showReq(){
+ B().innerHTML='<p class="mut">Chargement…</p>';
+ const[p,t,g,s]=await Promise.all([SB.from('profiles').select('*').eq('role','pending').order('created_at'),SB.from('teachers').select('*'),SB.from('guardians').select('*'),SB.from('students').select('*')]);
+ PEND=p.data||[];PPL={teacher:t.data||[],parent:g.data||[],student:s.data||[]};
+ B().innerHTML=PEND.length?PEND.map(r=>`<div class="card" id="r${r.id}"><b>${esc(r.full_name)}</b><div class="mut">Demande : ${ROLES[r.requested_role]||'—'} · ${esc(r.phone||'sans téléphone')}</div>
+ <select class="role" onchange="fillP('${r.id}')">${['parent','student','teacher'].map(k=>`<option value="${k}" ${k===r.requested_role?'selected':''}>${ROLES[k]}</option>`).join('')}</select><select class="pid"></select>
+ <button onclick="approve('${r.id}')">Valider</button></div>`).join(''):'<p class="mut">Aucune demande en attente.</p>';
+ PEND.forEach(r=>fillP(r.id));
+}
+function fillP(id){const c=document.getElementById('r'+id),role=c.querySelector('.role').value;
+ c.querySelector('.pid').innerHTML=(role==='student'?'<option value="">Choisir l’élève existant…</option>':'<option value="new">➕ Créer une nouvelle fiche</option>')+opt(PPL[role],nm)}
+async function approve(id){
+ const c=document.getElementById('r'+id),role=c.querySelector('.role').value;let pid=c.querySelector('.pid').value;
+ if(!pid)return alert('Choisissez la fiche de l’élève.');
+ const p=PEND.find(x=>x.id===id);
+ if(pid==='new'){const[f,...l]=p.full_name.trim().split(/\s+/);
+  const{data,error}=await SB.from(role==='teacher'?'teachers':'guardians').insert({first_name:f,last_name:l.join(' ')||f,phone:p.phone||null}).select('id').single();
+  if(error)return alert(error.message);pid=data.id}
+ const{error}=await SB.from('profiles').update({role,person_id:pid}).eq('id',id);
+ error?alert(error.message):showReq();
+}
+
+/* Classes */
+async function showClasses(){
+ const[c,l,t]=await Promise.all([SB.from('classes').select('*,levels(name),teachers(first_name,last_name)').order('name'),SB.from('levels').select('*').order('position'),SB.from('teachers').select('*')]);
+ B().innerHTML=`<div class="card"><h2>Nouvelle classe</h2><div class="row"><input id="cn" placeholder="Nom (ex : 7ème année A)"><input id="cl" list="lv" placeholder="Niveau (ex : 7ème année)"><datalist id="lv">${(l.data||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist></div>
+ <div class="row"><input id="cr" placeholder="Salle"><input id="cc" type="number" value="35" min="1"><select id="ct"><option value="">Professeur principal…</option>${opt(t.data||[],nm)}</select></div><p class="err" id="ce"></p><button onclick="addClass()">Ajouter</button></div>`+
+ (c.data||[]).map(x=>`<div class="card"><b>${esc(x.name)}</b> · ${esc(x.levels?.name)}<div class="mut">${x.teachers?nm(x.teachers):'Sans professeur principal'} · ${esc(x.room||'—')} · ${x.capacity} places</div></div>`).join('');
+}
+async function addClass(){
+ const v=i=>document.getElementById(i).value.trim(),name=v('cn'),lv=v('cl'),ce=document.getElementById('ce');
+ if(!name||!lv)return ce.textContent='Nom et niveau obligatoires.';
+ let{data:L}=await SB.from('levels').select('id').eq('name',lv).maybeSingle();
+ if(!L){const r=await SB.from('levels').insert({name:lv,position:99}).select('id').single();if(r.error)return ce.textContent=r.error.message;L=r.data}
+ const{error}=await SB.from('classes').insert({name,level_id:L.id,room:v('cr')||null,capacity:+v('cc')||35,main_teacher_id:v('ct')||null});
+ error?ce.textContent=error.message:showClasses();
+}
+
+/* Élèves */
+async function showStudents(adm){
+ const[s,c,g]=await Promise.all([SB.from('students').select('*,classes(name),student_guardians(guardians(first_name,last_name))').order('last_name'),adm?SB.from('classes').select('id,name').order('name'):{data:[]},adm?SB.from('guardians').select('*'):{data:[]}]);
+ const list=(s.data||[]).map(x=>`<div class="card"><b>${esc(nm(x))}</b> · ${esc(x.classes?.name||'Sans classe')}<div class="mut">Matricule ${esc(x.matricule||'—')}${adm?' · Parents : '+(x.student_guardians.map(y=>esc(nm(y.guardians))).join(', ')||'—'):''}</div></div>`).join('')||'<p class="mut">Aucun élève à afficher.</p>';
+ B().innerHTML=(adm?`<div class="card"><h2>Inscrire un élève</h2><div class="row"><input id="sf" placeholder="Prénom"><input id="sl" placeholder="Nom"><input id="sm" placeholder="Matricule"></div>
+ <div class="row"><select id="sg"><option value="">Sexe</option><option>M</option><option>F</option></select><input id="sb" type="date"><select id="sc"><option value="">Classe…</option>${opt(c.data,x=>x.name)}</select><select id="sp"><option value="">Parent…</option>${opt(g.data,nm)}</select></div><p class="err" id="se"></p><button onclick="addStudent()">Inscrire</button></div>`:'')+list;
+}
+async function addStudent(){
+ const v=i=>document.getElementById(i).value.trim(),se=document.getElementById('se');
+ if(!v('sf')||!v('sl'))return se.textContent='Prénom et nom obligatoires.';
+ const{data,error}=await SB.from('students').insert({first_name:v('sf'),last_name:v('sl'),matricule:v('sm')||null,gender:v('sg')||null,birth_date:v('sb')||null,class_id:v('sc')||null}).select('id').single();
+ if(error)return se.textContent=error.message;
+ if(v('sp'))await SB.from('student_guardians').insert({student_id:data.id,guardian_id:v('sp')});
+ showStudents(true);
+}
+
+/* Matières (direction) */
+async function showSubjects(){
+ const[s,c,t,a]=await Promise.all([SB.from('subjects').select('*').order('name'),SB.from('classes').select('id,name').order('name'),SB.from('teachers').select('*'),SB.from('assignments').select('*,classes(name),subjects(name,coef),teachers(first_name,last_name)')]);
+ B().innerHTML=`<div class="card"><h2>Nouvelle matière</h2><div class="row"><input id="sn" placeholder="Matière"><input id="sk" type="number" min="1" max="10" value="1" title="Coefficient"><button onclick="addSub()">Ajouter</button></div></div>
+ <div class="card"><h2>Attribuer une matière à une classe</h2><div class="row"><select id="ac">${opt(c.data||[],x=>x.name)}</select><select id="as">${opt(s.data||[],x=>x.name+' (coef '+x.coef+')')}</select><select id="at"><option value="">Professeur…</option>${opt(t.data||[],nm)}</select></div><p class="err" id="ae"></p><button onclick="addAsg()">Attribuer</button></div>`+
+ (a.data||[]).map(x=>`<div class="card"><b>${esc(x.classes.name)}</b> — ${esc(x.subjects.name)} (coef ${x.subjects.coef})<div class="mut">${x.teachers?esc(nm(x.teachers)):'Sans professeur'}</div></div>`).join('');
+}
+async function addSub(){const n=document.getElementById('sn').value.trim();if(!n)return;const{error}=await SB.from('subjects').insert({name:n,coef:+document.getElementById('sk').value||1});error?alert(error.message):showSubjects()}
+async function addAsg(){const v=i=>document.getElementById(i).value;
+ if(!v('ac')||!v('as'))return document.getElementById('ae').textContent='Créez d’abord une classe.';
+ const{error}=await SB.from('assignments').insert({class_id:v('ac'),subject_id:v('as'),teacher_id:v('at')||null});
+ error?document.getElementById('ae').textContent=error.code==='23505'?'Cette matière est déjà attribuée à cette classe.':error.message:showSubjects()}
+
+/* Notes (professeur) */
+let CUR={a:null,t:1,e:null};
+async function showNotes(){
+ const{data:A}=await SB.from('assignments').select('id,class_id,classes(name),subjects(name)').eq('teacher_id',me.person_id);
+ if(!A?.length){B().innerHTML='<p class="mut">Aucune matière ne vous est encore attribuée par la direction.</p>';return}
+ if(!A.some(x=>x.id===CUR.a))CUR.a=A[0].id;
+ const{data:E}=await SB.from('assessments').select('*').eq('assignment_id',CUR.a).eq('term',CUR.t).order('held_on');
+ B().innerHTML=`<select onchange="CUR.a=this.value;CUR.e=null;showNotes()">${A.map(x=>`<option value="${x.id}" ${x.id===CUR.a?'selected':''}>${esc(x.classes.name)} — ${esc(x.subjects.name)}</option>`).join('')}</select>
+ <select onchange="CUR.t=+this.value;CUR.e=null;showNotes()">${[1,2,3].map(n=>`<option value="${n}" ${n===CUR.t?'selected':''}>Trimestre ${n}</option>`).join('')}</select>
+ <div class="card"><div class="row"><input id="et" placeholder="Nouvelle évaluation (ex : Devoir 1)"><button onclick="addAss()">Créer</button></div><p class="err" id="ee"></p></div>`+
+ (E||[]).map(x=>`<div class="card"><button class="${CUR.e===x.id?'':'ghost'}" onclick="CUR.e='${x.id}';showNotes()">${esc(x.title)} · ${esc(x.held_on)}</button><div id="g${x.id}"></div></div>`).join('');
+ if(CUR.e&&(E||[]).some(x=>x.id===CUR.e))gradeSheet(A.find(x=>x.id===CUR.a).class_id,CUR.e);
+}
+async function addAss(){const t=document.getElementById('et').value.trim();if(!t)return;const{error}=await SB.from('assessments').insert({assignment_id:CUR.a,term:CUR.t,title:t});error?document.getElementById('ee').textContent=error.message:showNotes()}
+async function gradeSheet(cid,eid){
+ const[s,g]=await Promise.all([SB.from('students').select('id,first_name,last_name').eq('class_id',cid).order('last_name'),SB.from('grades').select('*').eq('assessment_id',eid)]);
+ const m=Object.fromEntries((g.data||[]).map(x=>[x.student_id,x.value]));
+ document.getElementById('g'+eid).innerHTML=(s.data||[]).map(x=>`<div class="row"><span style="flex:2 1 160px;align-self:center">${esc(nm(x))}</span><input class="gv" data-s="${x.id}" type="number" min="0" max="20" step="0.25" value="${m[x.id]??''}" placeholder="/20"></div>`).join('')+`<p class="err" id="ge"></p><button onclick="saveGrades('${eid}')">Enregistrer les notes</button>`;
+}
+async function saveGrades(eid){
+ const rows=[],del=[],ge=document.getElementById('ge');
+ for(const i of document.querySelectorAll('.gv')){const v=i.value.trim();if(v==='')del.push(i.dataset.s);else{const n=+v;if(!(n>=0&&n<=20))return ge.textContent='Les notes vont de 0 à 20.';rows.push({assessment_id:eid,student_id:i.dataset.s,value:n})}}
+ let r={};if(rows.length)r=await SB.from('grades').upsert(rows);
+ if(!r.error&&del.length)r=await SB.from('grades').delete().eq('assessment_id',eid).in('student_id',del);
+ ge.textContent=r.error?r.error.message:'Notes enregistrées ✓';
+}
+
+/* Bulletin */
+let BS={s:null,t:1};
+async function showBulletin(){
+ const{data:S}=await SB.from('students').select('id,first_name,last_name,classes(name)').order('last_name');
+ if(!S?.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
+ if(!S.some(x=>x.id===BS.s))BS.s=S[0].id;
+ const st=S.find(x=>x.id===BS.s);
+ const[g,r]=await Promise.all([SB.from('grades').select('value,assessments!inner(term,assignments!inner(subjects(name,coef)))').eq('student_id',BS.s).eq('assessments.term',BS.t),SB.rpc('student_rank',{sid:BS.s,t:BS.t})]);
+ const by={};(g.data||[]).forEach(x=>{const sj=x.assessments.assignments.subjects;(by[sj.name]??={c:sj.coef,v:[]}).v.push(+x.value)});
+ const rows=Object.entries(by).map(([n,o])=>[n,o.c,o.v.reduce((a,b)=>a+b,0)/o.v.length]);
+ const tot=rows.reduce((a,x)=>a+x[1],0),moy=tot?rows.reduce((a,x)=>a+x[2]*x[1],0)/tot:null;
+ const ap=m=>m>=16?'Excellent':m>=14?'Très bien':m>=12?'Bien':m>=10?'Assez bien':'Insuffisant',rk=r.data?.[0];
+ B().innerHTML=`<div class="row"><select onchange="BS.s=this.value;showBulletin()">${S.map(x=>`<option value="${x.id}" ${x.id===BS.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select><select onchange="BS.t=+this.value;showBulletin()">${[1,2,3].map(n=>`<option value="${n}" ${n===BS.t?'selected':''}>Trimestre ${n}</option>`).join('')}</select></div>
+ <div class="card"><div class="mut">${esc(CFG.school_name)}${CFG.school_year?' · Année '+esc(CFG.school_year):''}</div><h2>Bulletin — ${esc(nm(st))}</h2><div class="mut">${esc(st.classes?.name||'Sans classe')} · Trimestre ${BS.t}</div>
+ ${rows.length?`<table style="width:100%;border-collapse:collapse;margin-top:8px"><tr class="mut"><td>Matière</td><td>Coef</td><td>Moyenne /20</td></tr>${rows.map(x=>`<tr style="border-top:1px solid var(--line)"><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2].toFixed(2)}</td></tr>`).join('')}</table>
+ <p><b>Moyenne générale : ${moy.toFixed(2)} / 20</b> · ${ap(moy)}${rk?` · Rang : ${rk.pos} sur ${rk.total}`:''}</p><button class="ghost" onclick="window.print()">Imprimer</button>`:'<p class="mut">Aucune note pour ce trimestre.</p>'}</div>`;
+}
+
+/* Appel (professeur, direction) */
+let AP={c:null,d:new Date().toISOString().slice(0,10)};
+async function showAppel(){
+ const{data:S}=await SB.from('students').select('id,first_name,last_name,class_id,classes(name)').order('last_name');
+ const cls=[...new Map((S||[]).filter(x=>x.class_id).map(x=>[x.class_id,x.classes.name])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+ if(!cls.length){B().innerHTML='<p class="mut">Aucune classe avec des élèves.</p>';return}
+ if(!cls.some(x=>x[0]===AP.c))AP.c=cls[0][0];
+ const list=S.filter(x=>x.class_id===AP.c);
+ const{data:R}=await SB.from('attendance').select('*').eq('day',AP.d).in('student_id',list.map(x=>x.id));
+ const m=Object.fromEntries((R||[]).map(x=>[x.student_id,x]));
+ B().innerHTML=`<div class="row"><select onchange="AP.c=this.value;showAppel()">${cls.map(([id,n])=>`<option value="${id}" ${id===AP.c?'selected':''}>${esc(n)}</option>`).join('')}</select><input type="date" value="${AP.d}" onchange="AP.d=this.value||AP.d;showAppel()"></div>`+
+ list.map(x=>{const r=m[x.id]||{};return `<div class="card"><b>${esc(nm(x))}</b><div class="row"><select class="as" data-s="${x.id}"><option value="">Présent</option><option value="absent" ${r.status==='absent'?'selected':''}>Absent</option><option value="late" ${r.status==='late'?'selected':''}>Retard</option></select><label class="mut" style="align-self:center"><input class="aj" type="checkbox" style="width:auto" ${r.justified?'checked':''}> Justifié</label></div></div>`}).join('')+
+ `<p class="err" id="ae"></p><button onclick="saveAppel()">Enregistrer l’appel</button>`;
+}
+async function saveAppel(){
+ const up=[],del=[];
+ document.querySelectorAll('.as').forEach(sel=>{const sid=sel.dataset.s;sel.value?up.push({student_id:sid,day:AP.d,status:sel.value,justified:sel.closest('.card').querySelector('.aj').checked}):del.push(sid)});
+ let r={};if(up.length)r=await SB.from('attendance').upsert(up,{onConflict:'student_id,day'});
+ if(!r.error&&del.length)r=await SB.from('attendance').delete().eq('day',AP.d).in('student_id',del);
+ document.getElementById('ae').textContent=r.error?r.error.message:'Appel enregistré ✓';
+}
+
+/* Absences (consultation) */
+let AB={s:null};
+async function showAbs(){
+ const{data:S}=await SB.from('students').select('id,first_name,last_name').order('last_name');
+ if(!S?.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
+ if(!S.some(x=>x.id===AB.s))AB.s=S[0].id;
+ const{data:R}=await SB.from('attendance').select('*').eq('student_id',AB.s).order('day',{ascending:false});
+ const A=(R||[]).filter(x=>x.status==='absent'),L=(R||[]).length-A.length,NJ=A.filter(x=>!x.justified).length;
+ B().innerHTML=`<select onchange="AB.s=this.value;showAbs()">${S.map(x=>`<option value="${x.id}" ${x.id===AB.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select>
+ <div class="card"><b>${A.length}</b> absence(s) dont <b>${NJ}</b> non justifiée(s) · <b>${L}</b> retard(s)</div>`+
+ ((R||[]).map(x=>`<div class="card"><b>${esc(new Date(x.day+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}</b><div class="mut">${x.status==='absent'?'Absence':'Retard'} · ${x.justified?'justifié':'non justifié'}</div></div>`).join('')||'<p class="mut">Aucune absence enregistrée.</p>');
+}
+
+/* Frais de scolarité */
+const gnf=n=>new Intl.NumberFormat('fr-FR').format(n||0)+' GNF';
+const PM={especes:'Espèces',mobile_money:'Mobile money',virement:'Virement',cheque:'Chèque'};
+let FE={s:null};
+async function showFees(){
+ const adm=me.role==='admin';
+ const[S,P,D,L]=await Promise.all([SB.from('students').select('id,first_name,last_name,classes(name,levels(fee))').order('last_name'),SB.from('payments').select('*').order('paid_on',{ascending:false}),SB.from('fee_discounts').select('*'),adm?SB.from('levels').select('*').order('position'):{data:[]}]);
+ const st=S.data||[],pay=P.data||[],dc=Object.fromEntries((D.data||[]).map(x=>[x.student_id,x.amount]));
+ if(!st.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
+ const info=x=>{const due=Math.max(0,(x.classes?.levels?.fee||0)-(dc[x.id]||0)),paid=pay.filter(p=>p.student_id===x.id).reduce((a,p)=>a+p.amount,0);return{due,paid,rest:due-paid}};
+ if(!st.some(x=>x.id===FE.s))FE.s=st[0].id;
+ const cur=st.find(x=>x.id===FE.s),ci=info(cur),today=new Date().toISOString().slice(0,10);
+ const sel=`<select onchange="FE.s=this.value;showFees()">${st.map(x=>`<option value="${x.id}" ${x.id===FE.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select>`;
+ const detail=`<div class="card"><h2>${esc(nm(cur))}</h2><div class="mut">${esc(cur.classes?.name||'Sans classe')}</div><p>À payer : <b>${gnf(ci.due)}</b>${dc[cur.id]?` (remise ${gnf(dc[cur.id])})`:''}<br>Payé : <b>${gnf(ci.paid)}</b><br>Reste : <b style="color:${ci.rest>0?'var(--err)':'inherit'}">${gnf(Math.max(0,ci.rest))}</b>${ci.rest<0?' · trop-perçu '+gnf(-ci.rest):''}</p>${adm?`<button class="ghost" onclick="setDisc('${cur.id}',${dc[cur.id]||0})">Définir une remise</button>`:''}</div>`+
+  pay.filter(p=>p.student_id===cur.id).map(p=>`<div class="card"><b>${gnf(p.amount)}</b> · ${esc(PM[p.method])}<div class="mut">${esc(new Date(p.paid_on+'T00:00').toLocaleDateString('fr-FR'))}${p.reference?' · réf. '+esc(p.reference):''}</div>${adm?`<button class="ghost" onclick="delPay('${p.id}')">Annuler ce paiement</button>`:''}</div>`).join('');
+ if(!adm){B().innerHTML=sel+detail;return}
+ const late=st.map(x=>({x,...info(x)})).filter(r=>r.rest>0).sort((a,b)=>b.rest-a.rest).slice(0,30);
+ B().innerHTML=`<div class="card"><h2>Tarifs annuels par niveau</h2>${(L.data||[]).map(l=>`<div class="row"><span style="flex:1 1 140px;align-self:center">${esc(l.name)}</span><input id="lf${l.id}" type="number" min="0" value="${l.fee}"><button onclick="saveFee('${l.id}')">OK</button></div>`).join('')}</div>`+
+ sel+detail+`<div class="card"><h2>Encaisser un paiement</h2><div class="row"><input id="pa" type="number" min="1" placeholder="Montant (GNF)"><select id="pm">${Object.entries(PM).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><div class="row"><input id="pr" placeholder="Référence (optionnel)"><input id="pd" type="date" value="${today}"></div><p class="err" id="pe"></p><button onclick="addPay()">Encaisser</button></div>`+
+ `<h2>Plus gros soldes à payer</h2>`+(late.map(r=>`<div class="card" onclick="FE.s='${r.x.id}';showFees()"><b>${esc(nm(r.x))}</b> · ${esc(r.x.classes?.name||'—')}<div class="mut">Reste ${gnf(r.rest)} sur ${gnf(r.due)}</div></div>`).join('')||'<p class="mut">Aucun solde en attente.</p>');
+}
+async function saveFee(id){const v=+document.getElementById('lf'+id).value;if(!(v>=0))return;const{error}=await SB.from('levels').update({fee:Math.round(v)}).eq('id',id);error?alert(error.message):showFees()}
+async function setDisc(sid,cur){const v=prompt('Remise en GNF (0 pour retirer)',cur);if(v===null)return;const n=Math.round(+v);if(!(n>=0))return alert('Montant invalide.');
+ const{error}=n?await SB.from('fee_discounts').upsert({student_id:sid,amount:n}):await SB.from('fee_discounts').delete().eq('student_id',sid);error?alert(error.message):showFees()}
+async function addPay(){const g=i=>document.getElementById(i).value.trim(),a=Math.round(+g('pa'));
+ if(!(a>0))return document.getElementById('pe').textContent='Indiquez un montant valide.';
+ const{error}=await SB.from('payments').insert({student_id:FE.s,amount:a,method:g('pm'),reference:g('pr')||null,paid_on:g('pd')||undefined});
+ error?document.getElementById('pe').textContent=error.message:showFees()}
+async function delPay(id){if(!confirm('Annuler définitivement ce paiement ?'))return;const{error}=await SB.from('payments').delete().eq('id',id);error?alert(error.message):showFees()}
+
+/* Emploi du temps */
+const DJ=['','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],t5=t=>String(t).slice(0,5);
+let TT={k:null};
+async function showTT(){
+ const adm=me.role==='admin',tea=me.role==='teacher';let opts=[],cid=null;
+ if(adm){const{data}=await SB.from('classes').select('id,name').order('name');opts=(data||[]).map(x=>[x.id,x.name,x.id])}
+ else if(!tea){const{data}=await SB.from('students').select('id,first_name,last_name,class_id').order('last_name');opts=(data||[]).map(x=>[x.id,nm(x),x.class_id])}
+ if(!tea){if(!opts.length){B().innerHTML='<p class="mut">Rien à afficher.</p>';return}
+  if(!opts.some(o=>o[0]===TT.k))TT.k=opts[0][0];cid=opts.find(o=>o[0]===TT.k)[2]}
+ const[R,A]=await Promise.all([SB.from('timetable_slots').select('*,assignments(class_id,teacher_id,classes(name),subjects(name),teachers(first_name,last_name))').order('start_time'),adm&&cid?SB.from('assignments').select('id,subjects(name),teachers(first_name,last_name)').eq('class_id',cid):{data:[]}]);
+ const rows=(R.data||[]).filter(x=>tea?x.assignments.teacher_id===me.person_id:x.assignments.class_id===cid);
+ const form=adm?`<div class="card"><h2>Ajouter un cours</h2><select id="ta">${opt(A.data||[],x=>x.subjects.name+(x.teachers?' — '+nm(x.teachers):''))}</select><div class="row"><select id="td">${DJ.slice(1).map((d,i)=>`<option value="${i+1}">${d}</option>`).join('')}</select><input id="ts" type="time" value="08:00"><input id="te" type="time" value="09:00"></div><input id="tr" placeholder="Salle (optionnel)"><p class="err" id="tx"></p><button onclick="addSlot()">Ajouter</button></div>`:'';
+ const days=[1,2,3,4,5,6].map(d=>{const l=rows.filter(x=>x.weekday===d);return l.length?`<div class="card"><b>${DJ[d]}</b>${l.map(x=>`<div style="padding:6px 0;border-top:1px solid var(--line)"><b>${t5(x.start_time)}–${t5(x.end_time)}</b> · ${esc(x.assignments.subjects.name)}<div class="mut">${tea?esc(x.assignments.classes.name):x.assignments.teachers?esc(nm(x.assignments.teachers)):'—'}${x.room?' · '+esc(x.room):''}</div>${adm?`<button class="ghost" onclick="delSlot('${x.id}')">Supprimer</button>`:''}</div>`).join('')}</div>`:''}).join('');
+ B().innerHTML=(tea?'':`<select onchange="TT.k=this.value;showTT()">${opts.map(o=>`<option value="${o[0]}" ${o[0]===TT.k?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`)+form+(days||'<p class="mut">Aucun cours programmé.</p>');
+}
+async function addSlot(){const g=i=>document.getElementById(i).value,x=document.getElementById('tx');
+ if(!g('ta'))return x.textContent='Attribuez d’abord des matières à cette classe (onglet Matières).';
+ if(g('te')<=g('ts'))return x.textContent='L’heure de fin doit suivre l’heure de début.';
+ const{error}=await SB.from('timetable_slots').insert({assignment_id:g('ta'),weekday:+g('td'),start_time:g('ts'),end_time:g('te'),room:g('tr').trim()||null});
+ error?x.textContent=error.message:showTT()}
+async function delSlot(id){if(!confirm('Supprimer ce cours ?'))return;const{error}=await SB.from('timetable_slots').delete().eq('id',id);error?alert(error.message):showTT()}
+
+/* Devoirs */
+const dfr=d=>new Date(d+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+let HW={a:null};
+async function showHW(){
+ const adm=me.role==='admin',tea=me.role==='teacher';
+ const[R,A]=await Promise.all([SB.from('homework').select('*,assignments(teacher_id,classes(name),subjects(name))').order('due_on',{ascending:false}).limit(60),tea?SB.from('assignments').select('id,classes(name),subjects(name)').eq('teacher_id',me.person_id):{data:[]}]);
+ if(tea&&A.data?.length&&!A.data.some(x=>x.id===HW.a))HW.a=A.data[0].id;
+ const form=tea?(A.data?.length?`<div class="card"><h2>Nouveau devoir</h2><select id="ha">${A.data.map(x=>`<option value="${x.id}" ${x.id===HW.a?'selected':''}>${esc(x.classes.name)} — ${esc(x.subjects.name)}</option>`).join('')}</select><input id="ht" placeholder="Titre (ex : Exercices page 45)"><textarea id="hd" rows="3" placeholder="Détails (optionnel)"></textarea><input id="hu" type="date" value="${new Date(Date.now()+864e5).toISOString().slice(0,10)}"><p class="err" id="hx"></p><button onclick="addHW()">Publier</button></div>`:'<p class="mut">Aucune matière ne vous est encore attribuée.</p>'):'';
+ B().innerHTML=form+((R.data||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="mut">${esc(x.assignments.classes.name)} — ${esc(x.assignments.subjects.name)} · pour le ${esc(dfr(x.due_on))}</div>${x.details?`<p style="white-space:pre-wrap;margin:6px 0">${esc(x.details)}</p>`:''}${adm||x.assignments.teacher_id===me.person_id?`<button class="ghost" onclick="delHW('${x.id}')">Supprimer</button>`:''}</div>`).join('')||'<p class="mut">Aucun devoir.</p>');
+}
+async function addHW(){const g=i=>document.getElementById(i).value.trim(),x=document.getElementById('hx');
+ if(!g('ht')||!g('hu'))return x.textContent='Titre et date obligatoires.';
+ const{error}=await SB.from('homework').insert({assignment_id:g('ha'),title:g('ht'),details:g('hd')||null,due_on:g('hu')});
+ if(error)x.textContent=error.message;else{HW.a=g('ha');showHW()}}
+async function delHW(id){if(!confirm('Supprimer ce devoir ?'))return;const{error}=await SB.from('homework').delete().eq('id',id);error?alert(error.message):showHW()}
+
+/* Annonces */
+async function showAnn(){
+ const adm=me.role==='admin';
+ try{localStorage.setItem('annSeen',new Date().toISOString())}catch{}
+ const[R,C]=await Promise.all([SB.from('announcements').select('*,classes(name)').order('created_at',{ascending:false}).limit(50),adm?SB.from('classes').select('id,name').order('name'):{data:[]}]);
+ const AU={all:'Tout le monde',parents:'Parents',students:'Élèves',teachers:'Professeurs',class:'Une classe'};
+ const form=adm?`<div class="card"><h2>Nouvelle annonce</h2><input id="nt" placeholder="Titre"><textarea id="nb" rows="4" placeholder="Message"></textarea><div class="row"><select id="na">${Object.entries(AU).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><select id="nc"><option value="">Classe (si « Une classe »)</option>${opt(C.data||[],x=>x.name)}</select></div><p class="err" id="nx"></p><button onclick="addAnn()">Publier</button></div>`:'';
+ B().innerHTML=form+((R.data||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="mut">${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))} · ${AU[x.audience]}${x.classes?' : '+esc(x.classes.name):''}</div><p style="white-space:pre-wrap;margin:6px 0">${esc(x.body)}</p>${adm?`<button class="ghost" onclick="delAnn('${x.id}')">Supprimer</button>`:''}</div>`).join('')||'<p class="mut">Aucune annonce.</p>');
+}
+async function addAnn(){const g=i=>document.getElementById(i).value.trim(),x=document.getElementById('nx');
+ if(!g('nt')||!g('nb'))return x.textContent='Titre et message obligatoires.';
+ if(g('na')==='class'&&!g('nc'))return x.textContent='Choisissez la classe concernée.';
+ const{error}=await SB.from('announcements').insert({title:g('nt'),body:g('nb'),audience:g('na'),class_id:g('na')==='class'?g('nc'):null});
+ error?x.textContent=error.message:showAnn()}
+async function delAnn(id){if(!confirm('Supprimer cette annonce ?'))return;const{error}=await SB.from('announcements').delete().eq('id',id);error?alert(error.message):showAnn()}
+
+/* Tableau de bord */
+const go=k=>{tab=k;render()};
+const stat=(l,v,k,sub='')=>`<${k?'button':'div'} class="stat" ${k?`onclick="go('${k}')"`:''}><span class="n">${v}</span><span class="l">${l}</span>${sub?`<span class="s">${sub}</span>`:''}</${k?'button':'div'}>`;
+const sumA=a=>(a||[]).reduce((t,x)=>t+x.amount,0);
+async function showDash(){
+ const now=new Date(),today=now.toISOString().slice(0,10),wd=((now.getDay()+6)%7)+1,adm=me.role==='admin',tea=me.role==='teacher';
+ const cnt=(t,f)=>{const q=SB.from(t).select('*',{count:'exact',head:true});return(f?f(q):q).then(r=>r.count||0)};
+ const[an,sl]=await Promise.all([SB.from('announcements').select('title,body,created_at').order('created_at',{ascending:false}).limit(2),SB.from('timetable_slots').select('start_time,end_time,room,assignments(teacher_id,classes(name),subjects(name))').eq('weekday',wd).order('start_time')]);
+ let top='',hw='';
+ if(adm){
+  const[ns,nc,nt,np,ab,S,P,D]=await Promise.all([cnt('students'),cnt('classes'),cnt('teachers'),cnt('profiles',q=>q.eq('role','pending')),cnt('attendance',q=>q.eq('day',today).eq('status','absent')),SB.from('students').select('id,classes(levels(fee))'),SB.from('payments').select('amount'),SB.from('fee_discounts').select('amount')]);
+  const exp=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)),got=sumA(P.data),pc=exp?Math.min(100,Math.round(got*100/exp)):0;
+  top=setupCard()+`<div class="grid">${stat('Élèves',ns,'stu')}${stat('Classes',nc,'cm')}${stat('Professeurs',nt,'tch')}${stat('Demandes d’inscription',np,'req',np?'À valider':'')}${stat('Absents aujourd’hui',ab,'ar')}</div><div class="card"><div class="top"><b>Frais encaissés</b><b>${pc} %</b></div><div class="bar"><i style="width:${pc}%"></i></div><div class="mut">${gnf(got)} sur ${gnf(exp)} attendus</div></div>`;
+ }else{
+  const[H,AB,S,P,D]=await Promise.all([SB.from('homework').select('title,due_on,assignments(classes(name),subjects(name))').gte('due_on',today).order('due_on').limit(4),tea?{data:[]}:SB.from('attendance').select('status,justified'),tea?{data:[]}:SB.from('students').select('id,classes(levels(fee))'),tea?{data:[]}:SB.from('payments').select('amount'),tea?{data:[]}:SB.from('fee_discounts').select('amount')]);
+  const nj=(AB.data||[]).filter(x=>x.status==='absent'&&!x.justified).length,rest=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)-sumA(P.data));
+  top=`<div class="grid">${stat('Devoirs à venir',(H.data||[]).length,'hw')}${tea?'':stat('Absences non justifiées',nj,'ar')}${tea?'':stat('Reste à payer',gnf(rest).replace(' GNF',''),'fee','GNF')}</div>`;
+  hw=`<h2>Prochains devoirs</h2>`+((H.data||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="mut">${esc(x.assignments.classes.name)} — ${esc(x.assignments.subjects.name)} · pour le ${esc(dfr(x.due_on))}</div></div>`).join('')||'<p class="mut">Aucun devoir à rendre.</p>');
+ }
+ const slots=(sl.data||[]).filter(x=>!tea||x.assignments.teacher_id===me.person_id);
+ const day=`<h2>Aujourd’hui, ${esc(now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))}</h2><div class="card">${wd===7?'<span class="mut">Pas de cours le dimanche.</span>':slots.map(x=>`<div class="li"><b>${t5(x.start_time)}–${t5(x.end_time)}</b><div>${esc(x.assignments.subjects.name)}<div class="mut">${esc(x.assignments.classes.name)}${x.room?' · '+esc(x.room):''}</div></div></div>`).join('')||'<span class="mut">Aucun cours programmé aujourd’hui.</span>'}</div>`;
+ const ann=`<h2>Annonces</h2>`+((an.data||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="mut">${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))}</div><p style="margin:6px 0;white-space:pre-wrap">${esc(x.body.length>220?x.body.slice(0,220)+'…':x.body)}</p></div>`).join('')||'<p class="mut">Aucune annonce.</p>');
+ B().innerHTML=`<h1>Bonjour, ${esc(me.full_name.split(' ')[0])}</h1>${top}${day}${hw}${ann}`;
+}
+
+/* Pages regroupées, professeurs, messagerie */
+const seg=(it,c,f)=>`<div class="seg">${it.map(([k,l])=>`<button class="${k===c?'':'ghost'}" onclick="${f}('${k}')">${l}</button>`).join('')}</div><div id="inner"></div>`;
+let CM='cls',AR='app';
+function showCM(){document.getElementById('body').innerHTML=seg([['cls','Classes'],['sub','Matières']],CM,'setCM');(CM==='cls'?showClasses:showSubjects)()}
+const setCM=k=>{CM=k;showCM()};
+function showAR(){if(!['admin','teacher'].includes(me.role))return showAbs();document.getElementById('body').innerHTML=seg([['app','Appel'],['abs','Historique']],AR,'setAR');(AR==='app'?showAppel:showAbs)()}
+const setAR=k=>{AR=k;showAR()};
+async function showTeachers(){
+ const[T,A,P]=await Promise.all([SB.from('teachers').select('*').order('last_name'),SB.from('assignments').select('teacher_id,classes(name),subjects(name)'),SB.from('profiles').select('person_id').eq('role','teacher')]);
+ const acc=new Set((P.data||[]).map(x=>x.person_id));
+ B().innerHTML=(T.data||[]).map(t=>{const l=(A.data||[]).filter(a=>a.teacher_id===t.id);return `<div class="card"><div class="top"><b>${esc(nm(t))}</b><span class="mut">${acc.has(t.id)?'Compte actif':'Sans compte'}</span></div><div class="mut">${esc(t.phone||'—')}</div>${l.map(a=>`<div class="li">${esc(a.classes.name)} — ${esc(a.subjects.name)}</div>`).join('')||'<div class="mut">Aucune matière attribuée.</div>'}</div>`}).join('')||'<p class="mut">Aucun professeur. Validez une demande d’inscription « Professeur » pour en créer un.</p>';
+}
+let MG={u:null};
+async function showMsg(){
+ const adm=me.role==='admin';let users=[],tid=me.id;
+ const{data:M}=await SB.from('messages').select('*').order('created_at').limit(300);
+ if(adm){const{data:U}=await SB.from('profiles').select('id,full_name,role').in('role',['teacher','student','parent']).order('full_name');users=U||[];
+  if(!users.some(x=>x.id===MG.u))MG.u=(users.find(x=>(M||[]).some(m=>m.thread_user===x.id))||users[0]||{}).id;tid=MG.u}
+ if(adm&&!users.length){B().innerHTML='<p class="mut">Aucun utilisateur validé pour l’instant.</p>';return}
+ const th=(M||[]).filter(m=>m.thread_user===tid);
+ B().innerHTML=(adm?`<select onchange="MG.u=this.value;showMsg()">${users.map(x=>`<option value="${x.id}" ${x.id===tid?'selected':''}>${(M||[]).some(m=>m.thread_user===x.id)?'● ':''}${esc(x.full_name)} (${ROLES[x.role]})</option>`).join('')}</select>`:'<p class="mut">Vos messages sont lus uniquement par la direction.</p>')+
+ (th.map(m=>`<div class="bub ${m.sender===me.id?'me':''}">${esc(m.body)}<small>${esc(new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</small></div>`).join('')||'<p class="mut">Aucun message.</p>')+
+ `<textarea id="mb" rows="3" maxlength="2000" placeholder="Votre message"></textarea><p class="err" id="mx"></p><button onclick="sendMsg('${tid}')">Envoyer</button>`;
+}
+async function sendMsg(tid){const b=document.getElementById('mb').value.trim();if(!b)return;const{error}=await SB.from('messages').insert({thread_user:tid,body:b});error?document.getElementById('mx').textContent=error.message:showMsg()}
+
+/* Paramètres de l'école (direction) */
+const setupCard=()=>CFG.school_name?'':`<div class="card"><b>Commencez ici</b><p class="mut">Renseignez le nom de votre école : il s’affichera dans le menu et sur les bulletins.</p><button onclick="go('set')">Nommer l’école</button></div>`;
+function showSettings(){
+ const d=new Date(),y=d.getFullYear(),def=d.getMonth()>=8?`${y}-${y+1}`:`${y-1}-${y}`;
+ B().innerHTML=`<div class="card"><h2>Votre école</h2><p class="mut">Ce nom s’affiche dans le menu et sur les bulletins.</p><input id="sn2" maxlength="80" placeholder="Nom de l’école" value="${esc(CFG.school_name)}"><input id="sy" maxlength="9" placeholder="Année scolaire (ex : ${def})" value="${esc(CFG.school_year||def)}"><p class="err" id="sx"></p><button onclick="saveSettings()">Enregistrer</button></div><div class="card"><h2>Code de votre école</h2><p class="mut">Donnez ce code aux professeurs, parents et élèves : il leur faut pour créer leur compte. Vous validez ensuite chaque demande dans « Demandes d’inscription ».</p><p style="font:700 30px var(--serif);letter-spacing:.08em;margin:8px 0">${esc(CFG.join_code)}</p><button class="ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(CFG.join_code)}');this.textContent='Copié ✓'">Copier le code</button></div>`;
+}
+async function saveSettings(){const n=document.getElementById('sn2').value.trim(),yv=document.getElementById('sy').value.trim(),x=document.getElementById('sx');
+ if(n.length<3)return x.textContent='Indiquez le nom de l’école.';
+ const{error}=await SB.from('schools').update({name:n,year:yv}).eq('id',CFG.id);
+ if(error)return x.textContent=error.message;CFG={...CFG,school_name:n,school_year:yv};render()}
+
+/* Abonnement (école) */
+const sstate=()=>{if(CFG.status!=='active')return'blocked';if(!CFG.paid_until)return'active';const d=Math.floor((new Date(CFG.paid_until+'T23:59:59')-new Date())/864e5);return d>=0?'active':d>=-15?'grace':'blocked'};
+const PMN={orange_marchand:'Orange Marchand',orange_money:'Orange Money',mtn_money:'MTN Money'},PST={pending:'En attente de vérification',approved:'Approuvé',rejected:'Rejeté'};
+async function showPlan(){
+ const{data:P}=await SB.from('school_payments').select('*').order('created_at',{ascending:false});
+ const st=sstate(),pu=CFG.paid_until?new Date(CFG.paid_until+'T00:00').toLocaleDateString('fr-FR'):null;
+ const msg=CFG.status==='pending'?'Votre école est en attente d’activation. Effectuez le paiement ci-dessous : elle sera activée après vérification.':CFG.status==='suspended'?'Votre école est suspendue. Contactez la plateforme.':CFG.status==='rejected'?'La demande de cette école a été rejetée.':st==='active'?(pu?`Abonnement actif jusqu’au ${pu}.`:'Abonnement actif.'):st==='grace'?`Abonnement expiré le ${pu} : lecture seule pendant 15 jours. Renouvelez.`:`Abonnement expiré le ${pu}. Renouvelez pour retrouver l’accès.`;
+ const price=`Mensuel : ${PS.price_monthly?gnf(PS.price_monthly):'à définir'} · Annuel : ${PS.price_annual?gnf(PS.price_annual):'à définir'}`;
+ B().innerHTML=`<div class="card"><h2>Abonnement</h2><p>${esc(msg)}</p><div class="mut">${esc(price)}</div><button class="ghost" onclick="load()">Actualiser le statut</button></div>
+ <div class="card"><h2>Comment payer</h2><p style="white-space:pre-wrap;margin:6px 0">${esc(PS.payment_instructions)}</p><div class="row"><select id="pp"><option value="monthly">Formule mensuelle</option><option value="annual">Formule annuelle</option></select><input id="pa2" type="number" min="1" placeholder="Montant payé (GNF)"></div><div class="row"><select id="pmn">${Object.entries(PMN).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><input id="pref" placeholder="Référence de la transaction"></div><input id="pph" placeholder="Numéro qui a payé" inputmode="tel"><p class="err" id="pex"></p><button onclick="sendPay()">J’ai payé : envoyer pour vérification</button></div>`+
+ (P||[]).map(x=>`<div class="card"><b>${gnf(x.amount)}</b> · ${x.plan==='annual'?'Annuel':'Mensuel'} · ${PMN[x.method]}<div class="mut">Réf. ${esc(x.reference)} · ${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))} · ${PST[x.status]}</div>${x.note?`<div class="mut">${esc(x.note)}</div>`:''}</div>`).join('');
+}
+async function sendPay(){const g=i=>document.getElementById(i).value.trim(),x=document.getElementById('pex'),a=Math.round(+g('pa2'));
+ if(!(a>0)||g('pref').length<3)return x.textContent='Indiquez le montant et la référence de la transaction.';
+ const{error}=await SB.from('school_payments').insert({plan:g('pp'),amount:a,method:g('pmn'),reference:g('pref'),payer_phone:g('pph')||null});
+ error?x.textContent=error.message:showPlan()}
+
+/* Plateforme (propriétaire) */
+async function showPlatform(){
+ const[O,P,S]=await Promise.all([SB.rpc('platform_overview'),SB.from('school_payments').select('*,schools(name)').order('created_at',{ascending:false}),SB.from('platform_settings').select('*').maybeSingle()]);
+ const sc=O.data||[],pay=P.data||[];if(S.data)PS=S.data;
+ const by=k=>sc.filter(x=>x.status===k).length,sum=k=>sc.reduce((t,x)=>t+Number(x[k]),0),rev=pay.filter(x=>x.status==='approved').reduce((t,x)=>t+x.amount,0),pend=pay.filter(x=>x.status==='pending'),today=new Date().toISOString().slice(0,10);
+ B().innerHTML=`<div class="grid">${stat('Écoles actives',by('active'),'')}${stat('En attente',by('pending'),'',by('pending')?'À approuver':'')}${stat('Élèves au total',sum('n_students'),'')}${stat('Professeurs',sum('n_teachers'),'')}${stat('Comptes',sum('n_users'),'')}${stat('Revenus encaissés',gnf(rev).replace(' GNF',''),'','GNF')}</div><h2>Paiements à vérifier</h2>`+
+ (pend.map(x=>`<div class="card"><b>${esc(x.schools?.name)}</b><div>${gnf(x.amount)} · ${x.plan==='annual'?'Annuel':'Mensuel'} · ${PMN[x.method]}</div><div class="mut">Réf. ${esc(x.reference)} · ${esc(x.payer_phone||'—')} · ${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))}</div><div class="row"><button onclick="revPay('${x.id}',true)">Approuver</button><button class="ghost" onclick="revPay('${x.id}',false)">Rejeter</button></div></div>`).join('')||'<p class="mut">Aucun paiement en attente.</p>')+
+ `<h2>Écoles</h2>`+(sc.map(x=>{const exp=x.paid_until&&x.paid_until<today;return `<div class="card"><div class="top"><b>${esc(x.name)}</b><span class="mut">${({pending:'En attente',active:exp?'Expirée':'Active',suspended:'Suspendue',rejected:'Rejetée'})[x.status]}</span></div><div class="mut">${esc(x.admin_name||'—')} · ${esc(x.admin_phone||'—')}</div><div class="mut">${x.n_students} élèves · ${x.n_teachers} profs · ${x.n_users} comptes${x.paid_until?' · jusqu’au '+esc(new Date(x.paid_until+'T00:00').toLocaleDateString('fr-FR')):''}</div><div class="row"><button class="ghost" onclick="schAct('${x.id}','m')">+1 mois</button><button class="ghost" onclick="schAct('${x.id}','a')">+1 an</button><button class="ghost" onclick="schAct('${x.id}','${x.status==='suspended'?'on':'off'}')">${x.status==='suspended'?'Réactiver':'Suspendre'}</button></div></div>`}).join('')||'<p class="mut">Aucune école.</p>')+
+ `<div class="card"><h2>Tarifs et moyens de paiement</h2><div class="row"><input id="tm" type="number" min="0" placeholder="Prix mensuel (GNF)" value="${PS.price_monthly||''}"><input id="ta2" type="number" min="0" placeholder="Prix annuel (GNF)" value="${PS.price_annual||''}"></div><textarea id="ti" rows="4" maxlength="1000">${esc(PS.payment_instructions)}</textarea><p class="err" id="tx2"></p><button onclick="savePS()">Enregistrer</button></div>`;
+}
+async function revPay(id,ok){const n=ok?null:prompt('Motif du rejet (optionnel)');if(!ok&&n===null)return;const{error}=await SB.rpc('review_school_payment',{pid:id,ok,rnote:n||null});error?alert(error.message):showPlatform()}
+async function schAct(id,a){const r=a==='m'?await SB.rpc('extend_school',{sid:id,pl:'monthly'}):a==='a'?await SB.rpc('extend_school',{sid:id,pl:'annual'}):await SB.rpc('set_school_status',{sid:id,st:a==='on'?'active':'suspended'});r.error?alert(r.error.message):showPlatform()}
+async function savePS(){const g=i=>document.getElementById(i).value.trim(),{error}=await SB.from('platform_settings').update({price_monthly:Math.max(0,Math.round(+g('tm')||0)),price_annual:Math.max(0,Math.round(+g('ta2')||0)),payment_instructions:g('ti')}).eq('id',true);document.getElementById('tx2').textContent=error?error.message:'Enregistré ✓'}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+SB.auth.getSession().then(({data:{session}})=>session?load():authView());
+</script></body></html>
