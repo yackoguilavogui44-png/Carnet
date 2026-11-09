@@ -48,7 +48,7 @@ button{background:var(--acc);color:var(--on);border:0;font-weight:600;cursor:poi
 const SB=supabase.createClient("https://lwdjfvulsixevexpiexg.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3ZGpmdnVsc2l4ZXZleHBpZXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDI4OTksImV4cCI6MjEwOTExODg5OX0.gds7lS25_3E_MmXGkSB76jYFKJrmeXM9j8NIzdY_0Ow");
 const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const ROLES={parent:'Parent',student:'Élève',teacher:'Professeur',admin:'Direction'};
+const ROLES={parent:'Parent',student:'Élève',teacher:'Professeur',admin:'Direction',comptable:'Comptable',surveillant:'Surveillant'};
 const mail=v=>{v=v.trim().toLowerCase();return v.includes('@')?v:v+'@carnet-ecole.gn'};
 let me=null,tab='dash',mode='in',CFG={school_name:'',school_year:''},ISP=false,PS={price_monthly:0,price_annual:0,payment_instructions:''};
 
@@ -92,6 +92,8 @@ const ic=(k,z=22)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="no
 const D=['dash','Tableau de bord','home'],TT_=['ttb','Emploi du temps','cal'],BU=['bul','Bulletins','file'],HW_=['hw','Devoirs','book'],AR_=['ar','Absences & retards','check'],FE_=['fee','Frais & paiements','wallet'],MS=['msg','Messagerie','msg'],AN=['ann','Annonces','mega'];
 const NAV={admin:[D,['req','Demandes d’inscription','uplus'],['stu','Élèves','users'],['par','Parents','heart'],['tch','Professeurs','card'],['cm','Classes & matières','layers'],TT_,BU,HW_,AR_,FE_,MS,AN,['abo','Abonnement','card'],['set','Paramètres','sliders']],
  teacher:[D,['stu','Mes élèves','users'],TT_,['not','Notes','pen'],BU,HW_,AR_,MS,AN],
+ comptable:[D,['stu','Élèves','users'],FE_,MS,AN],
+ surveillant:[D,['stu','Élèves','users'],AR_,MS,AN],
  student:[D,['stu','Ma fiche','users'],TT_,BU,HW_,AR_,FE_,MS,AN],
  parent:[D,['stu','Mes enfants','users'],TT_,BU,HW_,AR_,FE_,MS,AN]};
 const drawer=o=>{document.getElementById('dr').classList.toggle('open',!!o);document.getElementById('ov').classList.toggle('open',!!o)};
@@ -120,15 +122,16 @@ async function showReq(){
  const[p,t,g,s]=await Promise.all([SB.from('profiles').select('*').eq('role','pending').order('created_at'),SB.from('teachers').select('*'),SB.from('guardians').select('*'),SB.from('students').select('*')]);
  PEND=p.data||[];PPL={teacher:t.data||[],parent:g.data||[],student:s.data||[]};
  B().innerHTML=PEND.length?PEND.map(r=>`<div class="card" id="r${r.id}"><b>${esc(r.full_name)}</b><div class="mut">Demande : ${ROLES[r.requested_role]||'—'} · ${esc(r.phone||'sans téléphone')}</div>
- <select class="role" onchange="fillP('${r.id}')">${['parent','student','teacher'].map(k=>`<option value="${k}" ${k===r.requested_role?'selected':''}>${ROLES[k]}</option>`).join('')}</select><select class="pid"></select>
+ <select class="role" onchange="fillP('${r.id}')">${['parent','student','teacher','comptable','surveillant'].map(k=>`<option value="${k}" ${k===r.requested_role?'selected':''}>${ROLES[k]}</option>`).join('')}</select><select class="pid"></select>
  <button onclick="approve('${r.id}')">Valider</button></div>`).join(''):'<p class="mut">Aucune demande en attente.</p>';
  PEND.forEach(r=>fillP(r.id));
 }
 function fillP(id){const c=document.getElementById('r'+id),role=c.querySelector('.role').value;
+ if(role==='comptable'||role==='surveillant'){c.querySelector('.pid').innerHTML='<option value="staff">Aucune fiche nécessaire</option>';return}
  c.querySelector('.pid').innerHTML=(role==='student'?'<option value="">Choisir l’élève existant…</option>':'<option value="new">➕ Créer une nouvelle fiche</option>')+opt(PPL[role],nm)}
 async function approve(id){
  const c=document.getElementById('r'+id),role=c.querySelector('.role').value;let pid=c.querySelector('.pid').value;
- if(!pid)return alert('Choisissez la fiche de l’élève.');
+ if(!pid)return alert('Choisissez la fiche de l’élève.');if(pid==='staff')pid=null;
  const p=PEND.find(x=>x.id===id);
  if(pid==='new'){const[f,...l]=p.full_name.trim().split(/\s+/);
   const{data,error}=await SB.from(role==='teacher'?'teachers':'guardians').insert({first_name:f,last_name:l.join(' ')||f,phone:p.phone||null}).select('id').single();
@@ -267,21 +270,22 @@ const gnf=n=>new Intl.NumberFormat('fr-FR').format(n||0)+' GNF';
 const PM={especes:'Espèces',mobile_money:'Mobile money',virement:'Virement',cheque:'Chèque'};
 let FE={s:null};
 async function showFees(){
- const adm=me.role==='admin';
- const[S,P,D,L]=await Promise.all([SB.from('students').select('id,first_name,last_name,classes(name,levels(fee))').order('last_name'),SB.from('payments').select('*').order('paid_on',{ascending:false}),SB.from('fee_discounts').select('*'),adm?SB.from('levels').select('*').order('position'):{data:[]}]);
+ const adm=['admin','comptable'].includes(me.role),isA=me.role==='admin';
+ const[S,P,D,L]=await Promise.all([SB.from('students').select('id,first_name,last_name,classes(name,levels(fee))').order('last_name'),SB.from('payments').select('*').order('paid_on',{ascending:false}),SB.from('fee_discounts').select('*'),isA?SB.from('levels').select('*').order('position'):{data:[]}]);
  const st=S.data||[],pay=P.data||[],dc=Object.fromEntries((D.data||[]).map(x=>[x.student_id,x.amount]));
  if(!st.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
  const info=x=>{const due=Math.max(0,(x.classes?.levels?.fee||0)-(dc[x.id]||0)),paid=pay.filter(p=>p.student_id===x.id).reduce((a,p)=>a+p.amount,0);return{due,paid,rest:due-paid}};
  if(!st.some(x=>x.id===FE.s))FE.s=st[0].id;
+ FEI=Object.fromEntries(st.map(x=>[x.id,{n:nm(x),r:info(x).rest}]));
  const cur=st.find(x=>x.id===FE.s),ci=info(cur),today=new Date().toISOString().slice(0,10);
  const sel=`<select onchange="FE.s=this.value;showFees()">${st.map(x=>`<option value="${x.id}" ${x.id===FE.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select>`;
  const detail=`<div class="card"><h2>${esc(nm(cur))}</h2><div class="mut">${esc(cur.classes?.name||'Sans classe')}</div><p>À payer : <b>${gnf(ci.due)}</b>${dc[cur.id]?` (remise ${gnf(dc[cur.id])})`:''}<br>Payé : <b>${gnf(ci.paid)}</b><br>Reste : <b style="color:${ci.rest>0?'var(--err)':'inherit'}">${gnf(Math.max(0,ci.rest))}</b>${ci.rest<0?' · trop-perçu '+gnf(-ci.rest):''}</p>${adm?`<button class="ghost" onclick="setDisc('${cur.id}',${dc[cur.id]||0})">Définir une remise</button>`:''}</div>`+
   pay.filter(p=>p.student_id===cur.id).map(p=>`<div class="card"><b>${gnf(p.amount)}</b> · ${esc(PM[p.method])}<div class="mut">${esc(new Date(p.paid_on+'T00:00').toLocaleDateString('fr-FR'))}${p.reference?' · réf. '+esc(p.reference):''}</div>${adm?`<button class="ghost" onclick="delPay('${p.id}')">Annuler ce paiement</button>`:''}</div>`).join('');
- if(!adm){B().innerHTML=sel+detail;return}
+ if(!adm){B().innerHTML=sel+detail+await declareHtml(cur);return}
  const late=st.map(x=>({x,...info(x)})).filter(r=>r.rest>0).sort((a,b)=>b.rest-a.rest).slice(0,30);
- B().innerHTML=`<div class="card"><h2>Tarifs annuels par niveau</h2>${(L.data||[]).map(l=>`<div class="row"><span style="flex:1 1 140px;align-self:center">${esc(l.name)}</span><input id="lf${l.id}" type="number" min="0" value="${l.fee}"><button onclick="saveFee('${l.id}')">OK</button></div>`).join('')}</div>`+
+ B().innerHTML=(isA?`<div class="card"><h2>Tarifs annuels par niveau</h2>${(L.data||[]).map(l=>`<div class="row"><span style="flex:1 1 140px;align-self:center">${esc(l.name)}</span><input id="lf${l.id}" type="number" min="0" value="${l.fee}"><button onclick="saveFee('${l.id}')">OK</button></div>`).join('')}</div>`:'')+
  sel+detail+`<div class="card"><h2>Encaisser un paiement</h2><div class="row"><input id="pa" type="number" min="1" placeholder="Montant (GNF)"><select id="pm">${Object.entries(PM).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><div class="row"><input id="pr" placeholder="Référence (optionnel)"><input id="pd" type="date" value="${today}"></div><p class="err" id="pe"></p><button onclick="addPay()">Encaisser</button></div>`+
- `<h2>Plus gros soldes à payer</h2>`+(late.map(r=>`<div class="card" onclick="FE.s='${r.x.id}';showFees()"><b>${esc(nm(r.x))}</b> · ${esc(r.x.classes?.name||'—')}<div class="mut">Reste ${gnf(r.rest)} sur ${gnf(r.due)}</div></div>`).join('')||'<p class="mut">Aucun solde en attente.</p>');
+ `<h2>Plus gros soldes à payer</h2>`+(late.map(r=>`<div class="card" onclick="FE.s='${r.x.id}';showFees()"><b>${esc(nm(r.x))}</b> · ${esc(r.x.classes?.name||'—')}<div class="mut">Reste ${gnf(r.rest)} sur ${gnf(r.due)}</div><button class="ghost sm" onclick="event.stopPropagation();remind('${r.x.id}')">Relancer sur WhatsApp</button></div>`).join('')||'<p class="mut">Aucun solde en attente.</p>')+await reviewHtml(isA);
 }
 async function saveFee(id){const v=+document.getElementById('lf'+id).value;if(!(v>=0))return;const{error}=await SB.from('levels').update({fee:Math.round(v)}).eq('id',id);error?alert(error.message):showFees()}
 async function setDisc(sid,cur){const v=prompt('Remise en GNF (0 pour retirer)',cur);if(v===null)return;const n=Math.round(+v);if(!(n>=0))return alert('Montant invalide.');
@@ -376,7 +380,7 @@ const seg=(it,c,f)=>`<div class="seg">${it.map(([k,l])=>`<button class="${k===c?
 let CM='cls',AR='app';
 function showCM(){document.getElementById('body').innerHTML=seg([['cls','Classes'],['sub','Matières']],CM,'setCM');(CM==='cls'?showClasses:showSubjects)()}
 const setCM=k=>{CM=k;showCM()};
-function showAR(){if(!['admin','teacher'].includes(me.role))return showAbs();document.getElementById('body').innerHTML=seg([['app','Appel'],['abs','Historique']],AR,'setAR');(AR==='app'?showAppel:showAbs)()}
+function showAR(){if(!['admin','teacher','surveillant'].includes(me.role))return showAbs();document.getElementById('body').innerHTML=seg([['app','Appel'],['abs','Historique']],AR,'setAR');(AR==='app'?showAppel:showAbs)()}
 const setAR=k=>{AR=k;showAR()};
 async function showTeachers(){
  const[T,A,P]=await Promise.all([SB.from('teachers').select('*').order('last_name'),SB.from('assignments').select('teacher_id,classes(name),subjects(name)'),SB.from('profiles').select('person_id').eq('role','teacher')]);
@@ -387,7 +391,7 @@ let MG={u:null};
 async function showMsg(){
  const adm=me.role==='admin';let users=[],tid=me.id;
  const{data:M}=await SB.from('messages').select('*').order('created_at').limit(300);
- if(adm){const{data:U}=await SB.from('profiles').select('id,full_name,role').in('role',['teacher','student','parent']).order('full_name');users=U||[];
+ if(adm){const{data:U}=await SB.from('profiles').select('id,full_name,role').in('role',['teacher','student','parent','comptable','surveillant']).order('full_name');users=U||[];
   if(!users.some(x=>x.id===MG.u))MG.u=(users.find(x=>(M||[]).some(m=>m.thread_user===x.id))||users[0]||{}).id;tid=MG.u}
  if(adm&&!users.length){B().innerHTML='<p class="mut">Aucun utilisateur validé pour l’instant.</p>';return}
  const th=(M||[]).filter(m=>m.thread_user===tid);
@@ -456,6 +460,41 @@ async function addTeacher(){const g=i=>document.getElementById(i).value.trim(),x
  const{error}=await SB.from('teachers').insert({first_name:g('tf'),last_name:g('tl'),phone:g('tp')||null});
  error?x.textContent=error.message:showTeachers()}
 async function delTeacher(id){if(!confirm('Supprimer ce professeur ? Ses matières resteront sans professeur.'))return;const{error}=await SB.from('teachers').delete().eq('id',id);error?alert(error.message):showTeachers()}
+
+/* Paiements : déclaration, validation, relances, moyens de paiement */
+const DM={bank:'Virement bancaire',orange_money:'Orange Money',orange_marchand:'Orange Marchand',mtn_money:'MTN Money',cash:'Espèces (remis à l’école)'},DST={pending:'En attente de validation',approved:'Validé',rejected:'Refusé'};
+let PCFG={},FEI={};
+async function loadCfg(){const{data}=await SB.from('school_payment_config').select('*').maybeSingle();PCFG=data||{};return PCFG}
+async function declareHtml(cur){
+ const[c,D]=await Promise.all([loadCfg(),SB.from('payment_declarations').select('*').eq('student_id',cur.id).order('created_at',{ascending:false})]);
+ const L=[['Banque',[c.bank_name,c.bank_account_name,c.bank_account_number].filter(Boolean).join(' · ')],['Orange Money',c.orange_money_number],['Orange Marchand',c.orange_marchand_number],['MTN Money',c.mtn_money_number]].filter(x=>x[1]);
+ return `<div class="card"><h2>Comment payer</h2>${L.map(([k,v])=>`<div class="li"><b>${k}</b><span>${esc(v)}</span></div>`).join('')||'<p class="mut">L’école n’a pas encore renseigné ses moyens de paiement.</p>'}${c.instructions?`<p style="white-space:pre-wrap;margin:8px 0">${esc(c.instructions)}</p>`:''}</div>
+ <div class="card"><h2>Déclarer un paiement</h2><div class="row"><input id="da" type="number" min="1" placeholder="Montant payé (GNF)"><select id="dm">${Object.entries(DM).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div><input id="dr" placeholder="Référence de la transaction"><label class="mut">Reçu (photo ou PDF, 5 Mo max)</label><input id="df" type="file" accept="image/*,application/pdf"><p class="err" id="de"></p><button onclick="declarePay()">Envoyer pour validation</button></div>`+
+ (D.data||[]).map(x=>`<div class="card"><b>${gnf(x.amount)}</b> · ${DM[x.method]}<div class="mut">${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))} · ${DST[x.status]}${x.reference?' · réf. '+esc(x.reference):''}</div>${x.note?`<div class="mut">${esc(x.note)}</div>`:''}</div>`).join('');
+}
+async function declarePay(){
+ const g=i=>document.getElementById(i),x=g('de'),a=Math.round(+g('da').value);
+ if(!(a>0))return x.textContent='Indiquez le montant payé.';
+ const f=g('df').files[0];let path=null;
+ if(f){if(f.size>5242880)return x.textContent='Fichier trop lourd (5 Mo max).';
+  path=`${CFG.id}/${me.id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const u=await SB.storage.from('receipts').upload(path,f);if(u.error)return x.textContent='Envoi du reçu impossible : '+u.error.message}
+ const{error}=await SB.from('payment_declarations').insert({student_id:FE.s,amount:a,method:g('dm').value,reference:g('dr').value.trim()||null,receipt_path:path});
+ error?x.textContent=error.message:showFees()}
+const cfgCard=c=>`<div class="card"><h2>Moyens de paiement de l’école</h2><input id="c1" placeholder="Banque" value="${esc(c.bank_name||'')}"><input id="c2" placeholder="Titulaire du compte" value="${esc(c.bank_account_name||'')}"><input id="c3" placeholder="Numéro de compte" value="${esc(c.bank_account_number||'')}"><input id="c4" placeholder="Numéro Orange Money" value="${esc(c.orange_money_number||'')}"><input id="c5" placeholder="Numéro Orange Marchand" value="${esc(c.orange_marchand_number||'')}"><input id="c6" placeholder="Numéro MTN Money" value="${esc(c.mtn_money_number||'')}"><textarea id="c7" rows="3" maxlength="1000" placeholder="Instructions de paiement">${esc(c.instructions||'')}</textarea><p class="err" id="c8"></p><button onclick="saveCfg()">Enregistrer</button></div>`;
+async function reviewHtml(isA){
+ const[D,c]=await Promise.all([SB.from('payment_declarations').select('*,students(first_name,last_name)').order('created_at',{ascending:false}).limit(40),loadCfg()]);
+ const pe=(D.data||[]).filter(x=>x.status==='pending');
+ return `<h2>Paiements déclarés à examiner (${pe.length})</h2>`+(pe.map(x=>`<div class="card"><b>${esc(nm(x.students))}</b><div>${gnf(x.amount)} · ${DM[x.method]}</div><div class="mut">${esc(new Date(x.created_at).toLocaleDateString('fr-FR'))}${x.reference?' · réf. '+esc(x.reference):''}</div>${x.receipt_path?`<button class="ghost sm" onclick="viewReceipt('${esc(x.receipt_path)}')">Voir le reçu</button>`:''}<div class="row"><button onclick="revDecl('${x.id}',true)">Valider</button><button class="ghost" onclick="revDecl('${x.id}',false)">Refuser</button></div></div>`).join('')||'<p class="mut">Aucune déclaration en attente.</p>')+(isA?cfgCard(c):'');
+}
+async function saveCfg(){const g=i=>document.getElementById(i).value.trim()||null;const{error}=await SB.from('school_payment_config').upsert({school_id:CFG.id,bank_name:g('c1'),bank_account_name:g('c2'),bank_account_number:g('c3'),orange_money_number:g('c4'),orange_marchand_number:g('c5'),mtn_money_number:g('c6'),instructions:g('c7'),updated_at:new Date().toISOString()});document.getElementById('c8').textContent=error?error.message:'Enregistré ✓'}
+async function viewReceipt(p){const{data,error}=await SB.storage.from('receipts').createSignedUrl(p,120);error?alert(error.message):window.open(data.signedUrl,'_blank')}
+async function revDecl(id,ok){const n=ok?null:prompt('Motif du refus (optionnel)');if(!ok&&n===null)return;const{error}=await SB.rpc('review_declaration',{did:id,ok,rnote:n||null});error?alert(error.message):showFees()}
+async function remind(sid){const{data}=await SB.from('student_guardians').select('guardians(first_name,last_name,phone)').eq('student_id',sid);
+ const g=(data||[]).map(x=>x.guardians).filter(x=>x&&x.phone);if(!g.length)return alert('Aucun parent avec un numéro de téléphone pour cet élève.');
+ let p=g[0].phone.replace(/\D/g,'');if(p.length===9)p='224'+p;
+ const i=FEI[sid],t=`Bonjour, rappel de ${CFG.school_name} : il reste ${gnf(i.r)} à régler pour ${i.n}. Merci de votre compréhension.`;
+ await SB.from('fee_reminders').insert({student_id:sid});window.open(`https://wa.me/${p}?text=${encodeURIComponent(t)}`,'_blank')}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 SB.auth.getSession().then(({data:{session}})=>session?load():authView());
 </script></body></html>
