@@ -60,7 +60,7 @@ function authView(msg=''){
  <input id="id" placeholder="E-mail ou identifiant" autocomplete="username" autocapitalize="none">
  <input id="pw" type="password" placeholder="Mot de passe${up?' (8 caractères min.)':''}" autocomplete="${up?'new-password':'current-password'}">
  ${up?`<input id="sc" placeholder="Code de l’école (donné par la direction)" autocapitalize="characters"><input id="sno" style="display:none" placeholder="Nom de votre école">`:''}
- <p class="err" id="er">${esc(msg)}</p><button id="go">${up?'Créer mon compte':'Se connecter'}</button></div>`;
+ <p class="err" id="er">${esc(msg)}</p><button id="go">${up?'Créer mon compte':'Se connecter'}</button>${up?'':`<button class="ghost" onclick="forgotView()">Mot de passe oublié ?</button>`}</div>`;
  document.getElementById('go').onclick=async e=>{
   const g=s=>document.getElementById(s)?.value||'',er=document.getElementById('er');
   const email=mail(g('id')),password=g('pw');er.textContent='';
@@ -80,6 +80,7 @@ function authView(msg=''){
 }
 async function load(){
  const{data:{user}}=await SB.auth.getUser();if(!user)return authView();
+ {const aal=await SB.auth.mfa.getAuthenticatorAssuranceLevel();if(aal.data&&aal.data.nextLevel==='aal2'&&aal.data.currentLevel!=='aal2')return mfaView()}
  const{data,error}=await SB.from('profiles').select('*').eq('id',user.id).single();
  if(error||!data){await SB.auth.signOut();return authView('Compte introuvable.')}
  me=data;{const c=await SB.from('schools').select('*').maybeSingle();if(c.data)CFG={id:c.data.id,school_name:c.data.name,school_year:c.data.year,join_code:c.data.join_code,status:c.data.status,paid_until:c.data.paid_until,plan:c.data.plan};ISP=(await SB.rpc('is_platform')).data===true;const ps=await SB.from('platform_settings').select('*').maybeSingle();if(ps.data)PS=ps.data}render();
@@ -87,15 +88,16 @@ async function load(){
 const out=()=>SB.auth.signOut().then(()=>{me=null;mode='in';authView()});
 const head=()=>`<header class="hd"><div><span class="brand">Carnet</span><span class="mut">${esc(me.full_name)} · ${ROLES[me.role]||'En attente'}</span></div><button class="ghost sm" onclick="out()">Quitter</button></header>`;
 
-const IC={"heart":"M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z","globe":"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20","sliders":"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6","menu": "M4 6h16M4 12h16M4 18h16", "help": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01", "bell": "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0", "cap": "M22 10 12 5 2 10l10 5zM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6", "out": "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5M21 12H9", "home": "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", "users": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8", "uplus": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6", "card": "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6M7 20c.5-2.5 2.5-4 5-4s4.5 1.5 5 4", "layers": "m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5", "cal": "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "pen": "M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4M2 6h4M2 10h4M2 14h4M2 18h4M21.4 5.6a2 2 0 0 0-3-3L11 10l-1 4 4-1z", "file": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2", "book": "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z", "check": "M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m1 10 2 2 4-4", "wallet": "M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5M16 13h2", "msg": "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "mega": "m3 11 18-5v12L3 13zM11.6 16.8a3 3 0 1 1-5.8-1.6"};
+const IC={"user":"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8","heart":"M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z","globe":"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20","sliders":"M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6","menu": "M4 6h16M4 12h16M4 18h16", "help": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01", "bell": "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0", "cap": "M22 10 12 5 2 10l10 5zM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6", "out": "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5M21 12H9", "home": "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z", "users": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8", "uplus": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6", "card": "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6M7 20c.5-2.5 2.5-4 5-4s4.5 1.5 5 4", "layers": "m12 2 10 5-10 5L2 7zM2 17l10 5 10-5M2 12l10 5 10-5", "cal": "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "pen": "M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4M2 6h4M2 10h4M2 14h4M2 18h4M21.4 5.6a2 2 0 0 0-3-3L11 10l-1 4 4-1z", "file": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2", "book": "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z", "check": "M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m1 10 2 2 4-4", "wallet": "M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5M16 13h2", "msg": "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "mega": "m3 11 18-5v12L3 13zM11.6 16.8a3 3 0 1 1-5.8-1.6"};
 const ic=(k,z=22)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
 const D=['dash','Tableau de bord','home'],TT_=['ttb','Emploi du temps','cal'],BU=['bul','Bulletins','file'],HW_=['hw','Devoirs','book'],AR_=['ar','Absences & retards','check'],FE_=['fee','Frais & paiements','wallet'],MS=['msg','Messagerie','msg'],AN=['ann','Annonces','mega'];
-const NAV={admin:[D,['req','Demandes d’inscription','uplus'],['stu','Élèves','users'],['par','Parents','heart'],['tch','Professeurs','card'],['cm','Classes & matières','layers'],TT_,BU,HW_,AR_,FE_,MS,AN,['abo','Abonnement','card'],['set','Paramètres','sliders']],
- teacher:[D,['stu','Mes élèves','users'],TT_,['not','Notes','pen'],BU,HW_,AR_,MS,AN],
- comptable:[D,['stu','Élèves','users'],FE_,MS,AN],
- surveillant:[D,['stu','Élèves','users'],AR_,MS,AN],
- student:[D,['stu','Ma fiche','users'],TT_,BU,HW_,AR_,FE_,MS,AN],
- parent:[D,['stu','Mes enfants','users'],TT_,BU,HW_,AR_,FE_,MS,AN]};
+const ACC=['acc','Mon compte','user'];
+const NAV={admin:[D,['req','Demandes d’inscription','uplus'],['stu','Élèves','users'],['par','Parents','heart'],['tch','Professeurs','card'],['cm','Classes & matières','layers'],TT_,BU,HW_,AR_,FE_,MS,AN,['abo','Abonnement','card'],['aud','Journal d’audit','file'],['set','Paramètres','sliders'],ACC],
+ teacher:[D,['stu','Mes élèves','users'],TT_,['not','Notes','pen'],BU,HW_,AR_,MS,AN,ACC],
+ comptable:[D,['stu','Élèves','users'],FE_,MS,AN,ACC],
+ surveillant:[D,['stu','Élèves','users'],AR_,MS,AN,ACC],
+ student:[D,['stu','Ma fiche','users'],TT_,BU,HW_,AR_,FE_,MS,AN,ACC],
+ parent:[D,['stu','Mes enfants','users'],TT_,BU,HW_,AR_,FE_,MS,AN,ACC]};
 const drawer=o=>{document.getElementById('dr').classList.toggle('open',!!o);document.getElementById('ov').classList.toggle('open',!!o)};
 function render(){
  if(me.role==='pending'){app.innerHTML=head()+`<div class="card"><h2>Compte en attente</h2><p>Votre demande est enregistrée. La direction doit la valider et vous rattacher à votre fiche. Revenez plus tard.</p><button onclick="load()">Actualiser</button></div>`;return}
@@ -108,7 +110,7 @@ function render(){
  <div id="ov" class="ov" onclick="drawer(0)"></div><nav id="dr" class="dr" aria-label="Menu principal"><div class="bd"><b>${ic('cap',30)}Carnet</b><p>${esc(CFG.school_name||'École à nommer')}${CFG.school_year?'<br>Année '+esc(CFG.school_year):''}</p></div>
  <div class="it">${N.map(([k,l,i])=>`<button class="ni ${k===tab?'on':''}" onclick="go('${k}')">${ic(i)}<span>${esc(l)}</span>${k==='req'?'<span class="bg" id="pc" hidden></span>':''}</button>`).join('')}</div>
  <div class="uc"><div class="u"><span class="av">${esc(ini)}</span><div><b>${esc(me.full_name)}</b><small>${ROLES[me.role]}</small></div></div><button class="out" onclick="out()">${ic('out',20)}Changer de compte</button></div></nav>${banner}<div id="body"></div>`;
- ({dash:showDash,req:showReq,stu:()=>showStudents(me.role==='admin'),tch:showTeachers,cm:showCM,ttb:showTT,not:showNotes,bul:showBulletin,hw:showHW,ar:showAR,fee:showFees,msg:showMsg,ann:showAnn,set:showSettings,abo:showPlan,plat:showPlatform,par:showParents})[tab]();
+ ({dash:showDash,req:showReq,stu:()=>showStudents(me.role==='admin'),tch:showTeachers,cm:showCM,ttb:showTT,not:showNotes,bul:showBulletin,hw:showHW,ar:showAR,fee:showFees,msg:showMsg,ann:showAnn,set:showSettings,abo:showPlan,plat:showPlatform,par:showParents,acc:showAccount,aud:showAudit})[tab]();
  SB.from('announcements').select('created_at').order('created_at',{ascending:false}).limit(1).then(({data})=>{const t=data?.[0]?.created_at;let sn=0;try{sn=localStorage.getItem('annSeen')||0}catch{}if(t&&new Date(t)>new Date(sn))document.getElementById('dot')?.removeAttribute('hidden')});
  if(me.role==='admin')SB.from('profiles').select('*',{count:'exact',head:true}).eq('role','pending').then(r=>{const e=document.getElementById('pc');if(e&&r.count){e.textContent=r.count;e.hidden=false}});
 }
@@ -495,6 +497,42 @@ async function remind(sid){const{data}=await SB.from('student_guardians').select
  let p=g[0].phone.replace(/\D/g,'');if(p.length===9)p='224'+p;
  const i=FEI[sid],t=`Bonjour, rappel de ${CFG.school_name} : il reste ${gnf(i.r)} à régler pour ${i.n}. Merci de votre compréhension.`;
  await SB.from('fee_reminders').insert({student_id:sid});window.open(`https://wa.me/${p}?text=${encodeURIComponent(t)}`,'_blank')}
+
+/* Mot de passe oublié, double authentification, journal d'audit */
+SB.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')recoveryView()});
+function forgotView(msg=''){
+ app.innerHTML=`<h1>Carnet</h1><p class="mut">Mot de passe oublié</p><div class="card"><p class="mut">Saisissez l’adresse e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.</p><input id="fe" type="email" placeholder="Adresse e-mail" autocomplete="email"><p class="err" id="fx">${esc(msg)}</p><button id="fg">Envoyer le lien</button><button class="ghost" onclick="authView()">Retour</button></div>`;
+ document.getElementById('fg').onclick=async()=>{const v=document.getElementById('fe').value.trim().toLowerCase(),x=document.getElementById('fx');
+  if(!v.includes('@'))return x.textContent='Un identifiant sans adresse e-mail ne peut pas recevoir de lien : demandez à la direction de votre école.';
+  const{error}=await SB.auth.resetPasswordForEmail(v,{redirectTo:location.origin+location.pathname});
+  x.style.color='var(--ok)';x.textContent=error?(x.style.color='',error.message):'Si cette adresse existe, un e-mail vient d’être envoyé. Pensez à vérifier vos courriers indésirables.'}}
+function recoveryView(msg=''){
+ app.innerHTML=`<h1>Carnet</h1><p class="mut">Nouveau mot de passe</p><div class="card"><input id="n1" type="password" placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password"><input id="n2" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password"><p class="err" id="nx">${esc(msg)}</p><button id="ng">Enregistrer</button></div>`;
+ document.getElementById('ng').onclick=async()=>{const a=document.getElementById('n1').value,b=document.getElementById('n2').value;
+  if(a.length<8)return recoveryView('8 caractères minimum.');if(a!==b)return recoveryView('Les deux mots de passe sont différents.');
+  const{error}=await SB.auth.updateUser({password:a});if(error)return recoveryView(error.message);history.replaceState(null,'',location.pathname);load()}}
+function mfaView(msg=''){
+ app.innerHTML=`<h1>Carnet</h1><p class="mut">Vérification en deux étapes</p><div class="card"><p>Saisissez le code à 6 chiffres affiché par votre application d’authentification.</p><input id="mc" inputmode="numeric" maxlength="6" placeholder="Code à 6 chiffres" autocomplete="one-time-code"><p class="err">${esc(msg)}</p><button id="mg">Valider</button><button class="ghost" onclick="out()">Annuler</button></div>`;
+ document.getElementById('mg').onclick=async()=>{const code=document.getElementById('mc').value.trim(),f=(await SB.auth.mfa.listFactors()).data?.totp?.find(x=>x.status==='verified');
+  if(!f)return mfaView('Aucune méthode trouvée.');const c=await SB.auth.mfa.challenge({factorId:f.id});if(c.error)return mfaView(c.error.message);
+  const v=await SB.auth.mfa.verify({factorId:f.id,challengeId:c.data.id,code});v.error?mfaView('Code incorrect, réessayez.'):load()}}
+async function showAccount(){
+ const{data:{user}}=await SB.auth.getUser(),on=((await SB.auth.mfa.listFactors()).data?.totp||[]).find(x=>x.status==='verified');
+ B().innerHTML=`<div class="card"><h2>Mon compte</h2><p><b>${esc(me.full_name)}</b><br><span class="mut">${ROLES[me.role]} · ${esc((user?.email||'').replace('@carnet-ecole.gn',''))}</span></p></div>
+ <div class="card"><h2>Changer mon mot de passe</h2><input id="p1" type="password" placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password"><input id="p2" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password"><p class="err" id="px"></p><button onclick="changePw()">Enregistrer</button></div>
+ <div class="card"><h2>Double authentification</h2><p class="mut">Ajoute un code à 6 chiffres, généré par une application comme Google Authenticator, à chaque connexion.</p>${on?`<p><b>Activée.</b></p><button class="ghost" onclick="mfaOff('${on.id}')">Désactiver</button>`:`<button onclick="mfaOn()">Activer</button>`}<div id="mfa"></div></div>`}
+async function changePw(){const a=document.getElementById('p1').value,b=document.getElementById('p2').value,x=document.getElementById('px');
+ if(a.length<8)return x.textContent='8 caractères minimum.';if(a!==b)return x.textContent='Les deux mots de passe sont différents.';
+ const{error}=await SB.auth.updateUser({password:a});x.style.color=error?'':'var(--ok)';x.textContent=error?error.message:'Mot de passe modifié ✓'}
+async function mfaOn(){const{data,error}=await SB.auth.mfa.enroll({factorType:'totp',friendlyName:'Carnet '+Date.now()});if(error)return alert(error.message);
+ document.getElementById('mfa').innerHTML=`<p>1. Scannez ce code avec votre application d’authentification.</p><img alt="Code QR" src="${data.totp.qr_code}" style="width:200px;max-width:100%;background:#fff;padding:8px;border-radius:8px"><p class="mut">Ou saisissez cette clé : <b>${esc(data.totp.secret)}</b></p><p>2. Saisissez le code à 6 chiffres affiché.</p><input id="mv" inputmode="numeric" maxlength="6" placeholder="Code à 6 chiffres"><p class="err" id="mvx"></p><button onclick="mfaConfirm('${data.id}')">Confirmer</button>`}
+async function mfaConfirm(fid){const c=await SB.auth.mfa.challenge({factorId:fid});if(c.error)return alert(c.error.message);const v=await SB.auth.mfa.verify({factorId:fid,challengeId:c.data.id,code:document.getElementById('mv').value.trim()});v.error?document.getElementById('mvx').textContent='Code incorrect.':showAccount()}
+async function mfaOff(fid){if(!confirm('Désactiver la double authentification ?'))return;const{error}=await SB.auth.mfa.unenroll({factorId:fid});error?alert(error.message):showAccount()}
+const AEN={students:'Élève',teachers:'Professeur',guardians:'Parent',student_guardians:'Lien parent-élève',classes:'Classe',levels:'Niveau',subjects:'Matière',assignments:'Attribution de matière',payments:'Paiement',fee_discounts:'Remise',payment_declarations:'Déclaration de paiement',school_payment_config:'Moyens de paiement',announcements:'Annonce',timetable_slots:'Cours (emploi du temps)',homework:'Devoir',profiles:'Compte utilisateur'},AAC={INSERT:'Création',UPDATE:'Modification',DELETE:'Suppression'};
+let AU={e:''};
+async function showAudit(){
+ let q=SB.from('audit_log').select('*').order('created_at',{ascending:false}).limit(100);if(AU.e)q=q.eq('entity',AU.e);const{data}=await q;
+ B().innerHTML=`<select onchange="AU.e=this.value;showAudit()"><option value="">Tout afficher</option>${Object.entries(AEN).map(([k,v])=>`<option value="${k}" ${k===AU.e?'selected':''}>${v}</option>`).join('')}</select>`+((data||[]).map(x=>`<div class="card"><b>${AAC[x.action]||esc(x.action)} · ${esc(AEN[x.entity]||x.entity)}</b><div class="mut">${esc(x.user_name||'Système')} · ${esc(new Date(x.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</div><details><summary class="mut">Détail</summary><div class="mut" style="word-break:break-all">${esc(x.details||'')}</div></details></div>`).join('')||'<p class="mut">Aucune action enregistrée pour l’instant.</p>')}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 SB.auth.getSession().then(({data:{session}})=>session?load():authView());
 </script></body></html>
