@@ -42,6 +42,7 @@ button{background:var(--acc);color:var(--on);border:0;font-weight:600;cursor:poi
 .seg{display:flex;gap:6px;margin:12px 0}.seg button{flex:1;width:auto}
 .bub{max-width:85%;padding:8px 12px;border-radius:14px;margin:6px 0;background:var(--card);border:1px solid var(--line);white-space:pre-wrap}.bub.me{margin-left:auto;background:var(--acc);color:var(--on);border-color:transparent}.bub small{display:block;opacity:.7;font-size:12px}
 @media print{.bar-top,.dr,.ov{display:none}}
+.sig{display:flex;justify-content:space-between;margin-top:48px;color:var(--mut)}@media print{body{background:#fff;color:#000}.card{border:0}.no-print{display:none}}
 </style></head><body><main id="app"></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -50,7 +51,7 @@ const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ROLES={parent:'Parent',student:'Élève',teacher:'Professeur',admin:'Direction',comptable:'Comptable',surveillant:'Surveillant'};
 const mail=v=>{v=v.trim().toLowerCase();return v.includes('@')?v:v+'@carnet-ecole.gn'};
-let me=null,tab='dash',mode='in',CFG={school_name:'',school_year:''},ISP=false,PS={price_monthly:0,price_annual:0,payment_instructions:''};
+let me=null,tab='dash',mode='in',CFG={school_name:'',school_year:''},ISP=false,YRS=[],YR=null,SV=null,PS={price_monthly:0,price_annual:0,payment_instructions:''};
 
 function authView(msg=''){
  const up=mode==='up';
@@ -83,7 +84,7 @@ async function load(){
  {const aal=await SB.auth.mfa.getAuthenticatorAssuranceLevel();if(aal.data&&aal.data.nextLevel==='aal2'&&aal.data.currentLevel!=='aal2')return mfaView()}
  const{data,error}=await SB.from('profiles').select('*').eq('id',user.id).single();
  if(error||!data){await SB.auth.signOut();return authView('Compte introuvable.')}
- me=data;{const c=await SB.from('schools').select('*').maybeSingle();if(c.data)CFG={id:c.data.id,school_name:c.data.name,school_year:c.data.year,join_code:c.data.join_code,status:c.data.status,paid_until:c.data.paid_until,plan:c.data.plan};ISP=(await SB.rpc('is_platform')).data===true;const ps=await SB.from('platform_settings').select('*').maybeSingle();if(ps.data)PS=ps.data}render();
+ me=data;{const c=await SB.from('schools').select('*').maybeSingle();if(c.data)CFG={id:c.data.id,school_name:c.data.name,school_year:c.data.year,join_code:c.data.join_code,status:c.data.status,paid_until:c.data.paid_until,plan:c.data.plan};ISP=(await SB.rpc('is_platform')).data===true;const ps=await SB.from('platform_settings').select('*').maybeSingle();if(ps.data)PS=ps.data;const yy=await SB.from('school_years').select('*').order('starts_on',{ascending:false});YRS=yy.data||[];const act=YRS.find(x=>x.status==='active')||YRS[0]||null;if(!['admin','comptable'].includes(me.role)||!YR||!YRS.some(x=>x.id===YR.id))YR=act}render();
 }
 const out=()=>SB.auth.signOut().then(()=>{me=null;mode='in';authView()});
 const head=()=>`<header class="hd"><div><span class="brand">Carnet</span><span class="mut">${esc(me.full_name)} · ${ROLES[me.role]||'En attente'}</span></div><button class="ghost sm" onclick="out()">Quitter</button></header>`;
@@ -103,7 +104,7 @@ function render(){
  if(me.role==='pending'){app.innerHTML=head()+`<div class="card"><h2>Compte en attente</h2><p>Votre demande est enregistrée. La direction doit la valider et vous rattacher à votre fiche. Revenez plus tard.</p><button onclick="load()">Actualiser</button></div>`;return}
  const st=sstate();
  if(st==='blocked'&&!ISP){app.innerHTML=head()+'<div id="body"></div>';if(me.role==='admin')showPlan();else B().innerHTML='<div class="card"><h2>École non active</h2><p>L’abonnement de votre école n’est pas actif. Contactez la direction de votre école.</p></div>';return}
- const banner=st==='grace'?`<div class="card" style="border-color:var(--margin)"><b>Abonnement expiré</b> : lecture seule.${me.role==='admin'?` <button class="ghost sm" onclick="go('abo')">Renouveler</button>`:' Prévenez la direction.'}</div>`:'';
+ const banner=(st==='grace'?`<div class="card" style="border-color:var(--margin)"><b>Abonnement expiré</b> : lecture seule.${me.role==='admin'?` <button class="ghost sm" onclick="go('abo')">Renouveler</button>`:' Prévenez la direction.'}</div>`:'')+(YR&&YR.status==='archived'?`<div class="card" style="border-color:var(--margin)"><b>Année ${esc(YR.label)} archivée</b> : consultation seulement. <button class="ghost sm" onclick="setYear(null)">Revenir à l’année en cours</button></div>`:'');
  const N=[...NAV[me.role],...(ISP?[['plat','Plateforme','globe']]:[])];if(!N.some(x=>x[0]===tab))tab=N[0][0];
  const cur=N.find(x=>x[0]===tab),ini=me.full_name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
  app.innerHTML=`<div class="bar-top"><button class="ib" onclick="drawer(1)" aria-label="Ouvrir le menu">${ic('menu')}</button><b class="pt">${esc(cur[1])}</b><button class="ib" onclick="alert('Besoin d’aide ? Écrivez à la direction depuis la Messagerie.')" aria-label="Aide">${ic('help')}</button><button class="ib" onclick="go('ann')" aria-label="Annonces">${ic('bell')}<i class="dot" id="dot" hidden></i></button></div>
@@ -160,8 +161,9 @@ async function addClass(){
 
 /* Élèves */
 async function showStudents(adm){
+ if(SV)return showStudentFile(SV,adm);
  const[s,c,g]=await Promise.all([SB.from('students').select('*,classes(name),student_guardians(guardians(first_name,last_name))').order('last_name'),adm?SB.from('classes').select('id,name').order('name'):{data:[]},adm?SB.from('guardians').select('*'):{data:[]}]);
- const list=(s.data||[]).map(x=>`<div class="card"><b>${esc(nm(x))}</b> · ${esc(x.classes?.name||'Sans classe')}<div class="mut">Matricule ${esc(x.matricule||'—')}${adm?' · Parents : '+(x.student_guardians.map(y=>esc(nm(y.guardians))).join(', ')||'—'):''}</div></div>`).join('')||'<p class="mut">Aucun élève à afficher.</p>';
+ const list=(s.data||[]).map(x=>`<div class="card" style="cursor:pointer" onclick="openStu('${x.id}')"><b>${esc(nm(x))}</b> · ${esc(x.classes?.name||'Sans classe')}<div class="mut">Matricule ${esc(x.matricule||'—')}${adm?' · Parents : '+(x.student_guardians.map(y=>esc(nm(y.guardians))).join(', ')||'—'):''}</div></div>`).join('')||'<p class="mut">Aucun élève à afficher.</p>';
  B().innerHTML=(adm?`<div class="card"><h2>Inscrire un élève</h2><div class="row"><input id="sf" placeholder="Prénom"><input id="sl" placeholder="Nom"><input id="sm" placeholder="Matricule"></div>
  <div class="row"><select id="sg"><option value="">Sexe</option><option>M</option><option>F</option></select><input id="sb" type="date"><select id="sc"><option value="">Classe…</option>${opt(c.data,x=>x.name)}</select><select id="sp"><option value="">Parent…</option>${opt(g.data,nm)}</select></div><p class="err" id="se"></p><button onclick="addStudent()">Inscrire</button></div>`:'')+list;
 }
@@ -193,22 +195,25 @@ async function showNotes(){
  const{data:A}=await SB.from('assignments').select('id,class_id,classes(name),subjects(name)').eq('teacher_id',me.person_id);
  if(!A?.length){B().innerHTML='<p class="mut">Aucune matière ne vous est encore attribuée par la direction.</p>';return}
  if(!A.some(x=>x.id===CUR.a))CUR.a=A[0].id;
- const{data:E}=await SB.from('assessments').select('*').eq('assignment_id',CUR.a).eq('term',CUR.t).order('held_on');
+ let eq=SB.from('assessments').select('*').eq('assignment_id',CUR.a).eq('term',CUR.t);if(YR)eq=eq.gte('held_on',YR.starts_on).lte('held_on',YR.ends_on);const{data:E}=await eq.order('held_on');
  B().innerHTML=`<select onchange="CUR.a=this.value;CUR.e=null;showNotes()">${A.map(x=>`<option value="${x.id}" ${x.id===CUR.a?'selected':''}>${esc(x.classes.name)} — ${esc(x.subjects.name)}</option>`).join('')}</select>
  <select onchange="CUR.t=+this.value;CUR.e=null;showNotes()">${[1,2,3].map(n=>`<option value="${n}" ${n===CUR.t?'selected':''}>Trimestre ${n}</option>`).join('')}</select>
- <div class="card"><div class="row"><input id="et" placeholder="Nouvelle évaluation (ex : Devoir 1)"><button onclick="addAss()">Créer</button></div><p class="err" id="ee"></p></div>`+
- (E||[]).map(x=>`<div class="card"><button class="${CUR.e===x.id?'':'ghost'}" onclick="CUR.e='${x.id}';showNotes()">${esc(x.title)} · ${esc(x.held_on)}</button><div id="g${x.id}"></div></div>`).join('');
- if(CUR.e&&(E||[]).some(x=>x.id===CUR.e))gradeSheet(A.find(x=>x.id===CUR.a).class_id,CUR.e);
+ <div class="card"><h2>Nouvelle évaluation</h2><input id="et" placeholder="Titre (ex : Devoir 1)"><div class="row"><select id="ek">${Object.entries(EK).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><label class="mut">Barème<input id="em" type="number" min="1" max="100" value="20"></label><label class="mut">Coefficient<input id="ec" type="number" min="0.5" max="10" step="0.5" value="1"></label></div><label class="mut">Date<input id="ed" type="date" value="${new Date().toISOString().slice(0,10)}"></label><p class="err" id="ee"></p><button onclick="addAss()">Créer</button></div>`+
+ (E||[]).map(x=>`<div class="card"><button class="${CUR.e===x.id?'':'ghost'}" onclick="CUR.e='${x.id}';showNotes()">${esc(x.title)} · ${esc(x.held_on)} · ${EK[x.kind]} · /${x.max_score} · coef ${x.coef}</button><div id="g${x.id}"></div></div>`).join('');
+ {const ev=(E||[]).find(x=>x.id===CUR.e);if(ev)gradeSheet(A.find(x=>x.id===CUR.a).class_id,CUR.e,ev.max_score)}
 }
-async function addAss(){const t=document.getElementById('et').value.trim();if(!t)return;const{error}=await SB.from('assessments').insert({assignment_id:CUR.a,term:CUR.t,title:t});error?document.getElementById('ee').textContent=error.message:showNotes()}
-async function gradeSheet(cid,eid){
+const EK={controle_continu:'Contrôle continu',examen:'Examen',devoir_maison:'Devoir maison',interrogation:'Interrogation'};
+let GMAX=20;
+async function addAss(){const g=i=>document.getElementById(i).value.trim(),t=g('et'),x=document.getElementById('ee');if(!t)return x.textContent='Donnez un titre à l’évaluation.';
+ const{error}=await SB.from('assessments').insert({assignment_id:CUR.a,term:CUR.t,title:t,kind:g('ek'),max_score:+g('em')||20,coef:+g('ec')||1,held_on:g('ed')||undefined});error?x.textContent=error.message:showNotes()}
+async function gradeSheet(cid,eid,mx){GMAX=+mx||20;
  const[s,g]=await Promise.all([SB.from('students').select('id,first_name,last_name').eq('class_id',cid).order('last_name'),SB.from('grades').select('*').eq('assessment_id',eid)]);
- const m=Object.fromEntries((g.data||[]).map(x=>[x.student_id,x.value]));
- document.getElementById('g'+eid).innerHTML=(s.data||[]).map(x=>`<div class="row"><span style="flex:2 1 160px;align-self:center">${esc(nm(x))}</span><input class="gv" data-s="${x.id}" type="number" min="0" max="20" step="0.25" value="${m[x.id]??''}" placeholder="/20"></div>`).join('')+`<p class="err" id="ge"></p><button onclick="saveGrades('${eid}')">Enregistrer les notes</button>`;
+ const m=Object.fromEntries((g.data||[]).map(x=>[x.student_id,x]));
+ document.getElementById('g'+eid).innerHTML=(s.data||[]).map(x=>`<div style="border-top:1px solid var(--line);padding:6px 0"><div class="row"><span style="flex:2 1 160px;align-self:center">${esc(nm(x))}</span><input class="gv" data-s="${x.id}" type="number" min="0" max="${GMAX}" step="0.25" value="${m[x.id]?.value??''}" placeholder="/${GMAX}"></div><input class="gc" data-s="${x.id}" maxlength="300" placeholder="Appréciation (optionnel)" value="${esc(m[x.id]?.comment||'')}"></div>`).join('')+`<p class="err" id="ge"></p><button onclick="saveGrades('${eid}')">Enregistrer les notes</button>`;
 }
 async function saveGrades(eid){
  const rows=[],del=[],ge=document.getElementById('ge');
- for(const i of document.querySelectorAll('.gv')){const v=i.value.trim();if(v==='')del.push(i.dataset.s);else{const n=+v;if(!(n>=0&&n<=20))return ge.textContent='Les notes vont de 0 à 20.';rows.push({assessment_id:eid,student_id:i.dataset.s,value:n})}}
+ for(const i of document.querySelectorAll('.gv')){const v=i.value.trim(),sid=i.dataset.s;if(v==='')del.push(sid);else{const n=+v;if(!(n>=0&&n<=GMAX))return ge.textContent=`Les notes vont de 0 à ${GMAX}.`;rows.push({assessment_id:eid,student_id:sid,value:n,comment:document.querySelector(`.gc[data-s="${sid}"]`)?.value.trim()||null})}}
  let r={};if(rows.length)r=await SB.from('grades').upsert(rows);
  if(!r.error&&del.length)r=await SB.from('grades').delete().eq('assessment_id',eid).in('student_id',del);
  ge.textContent=r.error?r.error.message:'Notes enregistrées ✓';
@@ -221,15 +226,16 @@ async function showBulletin(){
  if(!S?.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
  if(!S.some(x=>x.id===BS.s))BS.s=S[0].id;
  const st=S.find(x=>x.id===BS.s);
- const[g,r]=await Promise.all([SB.from('grades').select('value,assessments!inner(term,assignments!inner(subjects(name,coef)))').eq('student_id',BS.s).eq('assessments.term',BS.t),SB.rpc('student_rank',{sid:BS.s,t:BS.t})]);
- const by={};(g.data||[]).forEach(x=>{const sj=x.assessments.assignments.subjects;(by[sj.name]??={c:sj.coef,v:[]}).v.push(+x.value)});
- const rows=Object.entries(by).map(([n,o])=>[n,o.c,o.v.reduce((a,b)=>a+b,0)/o.v.length]);
+ let gq=SB.from('grades').select('value,comment,assessments!inner(term,held_on,max_score,coef,assignments!inner(subjects(name,coef)))').eq('student_id',BS.s).eq('assessments.term',BS.t);if(YR)gq=gq.gte('assessments.held_on',YR.starts_on).lte('assessments.held_on',YR.ends_on);
+ const[g,r]=await Promise.all([gq,SB.rpc('student_rank',{sid:BS.s,t:BS.t,d1:YR?.starts_on||null,d2:YR?.ends_on||null})]);
+ const by={};(g.data||[]).forEach(x=>{const a=x.assessments,sj=a.assignments.subjects,o=(by[sj.name]??={c:sj.coef,n:0,w:0,cm:''});o.n+=(+x.value)/(+a.max_score)*20*(+a.coef);o.w+=+a.coef;if(x.comment)o.cm=x.comment});
+ const rows=Object.entries(by).map(([n,o])=>[n,o.c,o.n/o.w,o.cm]);
  const tot=rows.reduce((a,x)=>a+x[1],0),moy=tot?rows.reduce((a,x)=>a+x[2]*x[1],0)/tot:null;
  const ap=m=>m>=16?'Excellent':m>=14?'Très bien':m>=12?'Bien':m>=10?'Assez bien':'Insuffisant',rk=r.data?.[0];
  B().innerHTML=`<div class="row"><select onchange="BS.s=this.value;showBulletin()">${S.map(x=>`<option value="${x.id}" ${x.id===BS.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select><select onchange="BS.t=+this.value;showBulletin()">${[1,2,3].map(n=>`<option value="${n}" ${n===BS.t?'selected':''}>Trimestre ${n}</option>`).join('')}</select></div>
- <div class="card"><div class="mut">${esc(CFG.school_name)}${CFG.school_year?' · Année '+esc(CFG.school_year):''}</div><h2>Bulletin — ${esc(nm(st))}</h2><div class="mut">${esc(st.classes?.name||'Sans classe')} · Trimestre ${BS.t}</div>
- ${rows.length?`<table style="width:100%;border-collapse:collapse;margin-top:8px"><tr class="mut"><td>Matière</td><td>Coef</td><td>Moyenne /20</td></tr>${rows.map(x=>`<tr style="border-top:1px solid var(--line)"><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2].toFixed(2)}</td></tr>`).join('')}</table>
- <p><b>Moyenne générale : ${moy.toFixed(2)} / 20</b> · ${ap(moy)}${rk?` · Rang : ${rk.pos} sur ${rk.total}`:''}</p><button class="ghost" onclick="window.print()">Imprimer</button>`:'<p class="mut">Aucune note pour ce trimestre.</p>'}</div>`;
+ <div class="card"><div class="mut">${esc(CFG.school_name)}${YR?' · Année '+esc(YR.label):''}</div><h2>Bulletin — ${esc(nm(st))}</h2><div class="mut">${esc(st.classes?.name||'Sans classe')} · Trimestre ${BS.t}</div>
+ ${rows.length?`<table style="width:100%;border-collapse:collapse;margin-top:8px"><tr class="mut"><td>Matière</td><td>Coef</td><td>Moyenne /20</td><td>Appréciation</td></tr>${rows.map(x=>`<tr style="border-top:1px solid var(--line)"><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2].toFixed(2)}</td><td class="mut">${esc(x[3])}</td></tr>`).join('')}</table>
+ <p><b>Moyenne générale : ${moy.toFixed(2)} / 20</b> · ${ap(moy)}${rk?` · Rang : ${rk.pos} sur ${rk.total}`:''}</p><div class="sig"><span>Le directeur</span><span>Le parent</span></div><button class="ghost no-print" data-n="${esc(nm(st))}" onclick="printBul(this.dataset.n)">Télécharger en PDF</button>`:'<p class="mut">Aucune note pour ce trimestre.</p>'}</div>`;
 }
 
 /* Appel (professeur, direction) */
@@ -243,12 +249,12 @@ async function showAppel(){
  const{data:R}=await SB.from('attendance').select('*').eq('day',AP.d).in('student_id',list.map(x=>x.id));
  const m=Object.fromEntries((R||[]).map(x=>[x.student_id,x]));
  B().innerHTML=`<div class="row"><select onchange="AP.c=this.value;showAppel()">${cls.map(([id,n])=>`<option value="${id}" ${id===AP.c?'selected':''}>${esc(n)}</option>`).join('')}</select><input type="date" value="${AP.d}" onchange="AP.d=this.value||AP.d;showAppel()"></div>`+
- list.map(x=>{const r=m[x.id]||{};return `<div class="card"><b>${esc(nm(x))}</b><div class="row"><select class="as" data-s="${x.id}"><option value="">Présent</option><option value="absent" ${r.status==='absent'?'selected':''}>Absent</option><option value="late" ${r.status==='late'?'selected':''}>Retard</option></select><label class="mut" style="align-self:center"><input class="aj" type="checkbox" style="width:auto" ${r.justified?'checked':''}> Justifié</label></div></div>`}).join('')+
- `<p class="err" id="ae"></p><button onclick="saveAppel()">Enregistrer l’appel</button>`;
+ list.map(x=>{const r=m[x.id]||{};return `<div class="card"><b>${esc(nm(x))}</b><div class="row"><select class="as" data-s="${x.id}"><option value="">Présent</option><option value="absent" ${r.status==='absent'?'selected':''}>Absent</option><option value="late" ${r.status==='late'?'selected':''}>Retard</option></select><select class="ar"><option value="">Motif…</option>${REAS.map(z=>`<option ${r.reason===z?'selected':''}>${z}</option>`).join('')}</select><label class="mut" style="align-self:center"><input class="aj" type="checkbox" style="width:auto" ${r.justified?'checked':''}> Justifié</label></div></div>`}).join('')+
+ `<p class="err" id="ae"></p><button onclick="saveAppel()">Enregistrer l’appel</button>`+await smsHtml(list,m);
 }
 async function saveAppel(){
  const up=[],del=[];
- document.querySelectorAll('.as').forEach(sel=>{const sid=sel.dataset.s;sel.value?up.push({student_id:sid,day:AP.d,status:sel.value,justified:sel.closest('.card').querySelector('.aj').checked}):del.push(sid)});
+ document.querySelectorAll('.as').forEach(sel=>{const sid=sel.dataset.s;sel.value?up.push({student_id:sid,day:AP.d,status:sel.value,justified:sel.closest('.card').querySelector('.aj').checked,reason:sel.closest('.card').querySelector('.ar').value||null}):del.push(sid)});
  let r={};if(up.length)r=await SB.from('attendance').upsert(up,{onConflict:'student_id,day'});
  if(!r.error&&del.length)r=await SB.from('attendance').delete().eq('day',AP.d).in('student_id',del);
  document.getElementById('ae').textContent=r.error?r.error.message:'Appel enregistré ✓';
@@ -260,11 +266,11 @@ async function showAbs(){
  const{data:S}=await SB.from('students').select('id,first_name,last_name').order('last_name');
  if(!S?.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
  if(!S.some(x=>x.id===AB.s))AB.s=S[0].id;
- const{data:R}=await SB.from('attendance').select('*').eq('student_id',AB.s).order('day',{ascending:false});
+ let aq=SB.from('attendance').select('*').eq('student_id',AB.s);if(YR)aq=aq.gte('day',YR.starts_on).lte('day',YR.ends_on);const{data:R}=await aq.order('day',{ascending:false});
  const A=(R||[]).filter(x=>x.status==='absent'),L=(R||[]).length-A.length,NJ=A.filter(x=>!x.justified).length;
  B().innerHTML=`<select onchange="AB.s=this.value;showAbs()">${S.map(x=>`<option value="${x.id}" ${x.id===AB.s?'selected':''}>${esc(nm(x))}</option>`).join('')}</select>
  <div class="card"><b>${A.length}</b> absence(s) dont <b>${NJ}</b> non justifiée(s) · <b>${L}</b> retard(s)</div>`+
- ((R||[]).map(x=>`<div class="card"><b>${esc(new Date(x.day+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}</b><div class="mut">${x.status==='absent'?'Absence':'Retard'} · ${x.justified?'justifié':'non justifié'}</div></div>`).join('')||'<p class="mut">Aucune absence enregistrée.</p>');
+ ((R||[]).map(x=>`<div class="card"><b>${esc(new Date(x.day+'T00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}</b><div class="mut">${x.status==='absent'?'Absence':'Retard'} · ${x.justified?'justifié':'non justifié'}${x.reason?' · '+esc(x.reason):''}</div></div>`).join('')||'<p class="mut">Aucune absence enregistrée.</p>');
 }
 
 /* Frais de scolarité */
@@ -274,7 +280,7 @@ let FE={s:null};
 async function showFees(){
  const adm=['admin','comptable'].includes(me.role),isA=me.role==='admin';
  const[S,P,D,L]=await Promise.all([SB.from('students').select('id,first_name,last_name,classes(name,levels(fee))').order('last_name'),SB.from('payments').select('*').order('paid_on',{ascending:false}),SB.from('fee_discounts').select('*'),isA?SB.from('levels').select('*').order('position'):{data:[]}]);
- const st=S.data||[],pay=P.data||[],dc=Object.fromEntries((D.data||[]).map(x=>[x.student_id,x.amount]));
+ const st=S.data||[],pay=(P.data||[]).filter(p=>inYR(p.paid_on)),dc=Object.fromEntries((D.data||[]).map(x=>[x.student_id,x.amount]));
  if(!st.length){B().innerHTML='<p class="mut">Aucun élève à afficher.</p>';return}
  const info=x=>{const due=Math.max(0,(x.classes?.levels?.fee||0)-(dc[x.id]||0)),paid=pay.filter(p=>p.student_id===x.id).reduce((a,p)=>a+p.amount,0);return{due,paid,rest:due-paid}};
  if(!st.some(x=>x.id===FE.s))FE.s=st[0].id;
@@ -353,7 +359,7 @@ async function addAnn(){const g=i=>document.getElementById(i).value.trim(),x=doc
 async function delAnn(id){if(!confirm('Supprimer cette annonce ?'))return;const{error}=await SB.from('announcements').delete().eq('id',id);error?alert(error.message):showAnn()}
 
 /* Tableau de bord */
-const go=k=>{tab=k;render()};
+const go=k=>{tab=k;SV=null;render()};
 const stat=(l,v,k,sub='')=>`<${k?'button':'div'} class="stat" ${k?`onclick="go('${k}')"`:''}><span class="n">${v}</span><span class="l">${l}</span>${sub?`<span class="s">${sub}</span>`:''}</${k?'button':'div'}>`;
 const sumA=a=>(a||[]).reduce((t,x)=>t+x.amount,0);
 async function showDash(){
@@ -362,12 +368,12 @@ async function showDash(){
  const[an,sl]=await Promise.all([SB.from('announcements').select('title,body,created_at').order('created_at',{ascending:false}).limit(2),SB.from('timetable_slots').select('start_time,end_time,room,assignments(teacher_id,classes(name),subjects(name))').eq('weekday',wd).order('start_time')]);
  let top='',hw='';
  if(adm){
-  const[ns,nc,nt,np,ab,S,P,D]=await Promise.all([cnt('students'),cnt('classes'),cnt('teachers'),cnt('profiles',q=>q.eq('role','pending')),cnt('attendance',q=>q.eq('day',today).eq('status','absent')),SB.from('students').select('id,classes(levels(fee))'),SB.from('payments').select('amount'),SB.from('fee_discounts').select('amount')]);
-  const exp=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)),got=sumA(P.data),pc=exp?Math.min(100,Math.round(got*100/exp)):0;
+  const[ns,nc,nt,np,ab,S,P,D]=await Promise.all([cnt('students'),cnt('classes'),cnt('teachers'),cnt('profiles',q=>q.eq('role','pending')),cnt('attendance',q=>q.eq('day',today).eq('status','absent')),SB.from('students').select('id,classes(levels(fee))'),SB.from('payments').select('amount,paid_on'),SB.from('fee_discounts').select('amount')]);
+  const exp=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)),got=sumP(P.data),pc=exp?Math.min(100,Math.round(got*100/exp)):0;
   top=setupCard()+`<div class="grid">${stat('Élèves',ns,'stu')}${stat('Classes',nc,'cm')}${stat('Professeurs',nt,'tch')}${stat('Demandes d’inscription',np,'req',np?'À valider':'')}${stat('Absents aujourd’hui',ab,'ar')}</div><div class="card"><div class="top"><b>Frais encaissés</b><b>${pc} %</b></div><div class="bar"><i style="width:${pc}%"></i></div><div class="mut">${gnf(got)} sur ${gnf(exp)} attendus</div></div>`;
  }else{
-  const[H,AB,S,P,D]=await Promise.all([SB.from('homework').select('title,due_on,assignments(classes(name),subjects(name))').gte('due_on',today).order('due_on').limit(4),tea?{data:[]}:SB.from('attendance').select('status,justified'),tea?{data:[]}:SB.from('students').select('id,classes(levels(fee))'),tea?{data:[]}:SB.from('payments').select('amount'),tea?{data:[]}:SB.from('fee_discounts').select('amount')]);
-  const nj=(AB.data||[]).filter(x=>x.status==='absent'&&!x.justified).length,rest=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)-sumA(P.data));
+  const[H,AB,S,P,D]=await Promise.all([SB.from('homework').select('title,due_on,assignments(classes(name),subjects(name))').gte('due_on',today).order('due_on').limit(4),tea?{data:[]}:SB.from('attendance').select('status,justified'),tea?{data:[]}:SB.from('students').select('id,classes(levels(fee))'),tea?{data:[]}:SB.from('payments').select('amount,paid_on'),tea?{data:[]}:SB.from('fee_discounts').select('amount')]);
+  const nj=(AB.data||[]).filter(x=>x.status==='absent'&&!x.justified).length,rest=Math.max(0,(S.data||[]).reduce((t,x)=>t+(x.classes?.levels?.fee||0),0)-sumA(D.data)-sumP(P.data));
   top=`<div class="grid">${stat('Devoirs à venir',(H.data||[]).length,'hw')}${tea?'':stat('Absences non justifiées',nj,'ar')}${tea?'':stat('Reste à payer',gnf(rest).replace(' GNF',''),'fee','GNF')}</div>`;
   hw=`<h2>Prochains devoirs</h2>`+((H.data||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="mut">${esc(x.assignments.classes.name)} — ${esc(x.assignments.subjects.name)} · pour le ${esc(dfr(x.due_on))}</div></div>`).join('')||'<p class="mut">Aucun devoir à rendre.</p>');
  }
@@ -407,7 +413,7 @@ async function sendMsg(tid){const b=document.getElementById('mb').value.trim();i
 const setupCard=()=>CFG.school_name?'':`<div class="card"><b>Commencez ici</b><p class="mut">Renseignez le nom de votre école : il s’affichera dans le menu et sur les bulletins.</p><button onclick="go('set')">Nommer l’école</button></div>`;
 function showSettings(){
  const d=new Date(),y=d.getFullYear(),def=d.getMonth()>=8?`${y}-${y+1}`:`${y-1}-${y}`;
- B().innerHTML=`<div class="card"><h2>Votre école</h2><p class="mut">Ce nom s’affiche dans le menu et sur les bulletins.</p><input id="sn2" maxlength="80" placeholder="Nom de l’école" value="${esc(CFG.school_name)}"><input id="sy" maxlength="9" placeholder="Année scolaire (ex : ${def})" value="${esc(CFG.school_year||def)}"><p class="err" id="sx"></p><button onclick="saveSettings()">Enregistrer</button></div><div class="card"><h2>Code de votre école</h2><p class="mut">Donnez ce code aux professeurs, parents et élèves : il leur faut pour créer leur compte. Vous validez ensuite chaque demande dans « Demandes d’inscription ».</p><p style="font:700 30px var(--serif);letter-spacing:.08em;margin:8px 0">${esc(CFG.join_code)}</p><button class="ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(CFG.join_code)}');this.textContent='Copié ✓'">Copier le code</button></div>`;
+ B().innerHTML=`<div class="card"><h2>Votre école</h2><p class="mut">Ce nom s’affiche dans le menu et sur les bulletins.</p><input id="sn2" maxlength="80" placeholder="Nom de l’école" value="${esc(CFG.school_name)}"><input id="sy" maxlength="9" placeholder="Année scolaire (ex : ${def})" value="${esc(CFG.school_year||def)}"><p class="err" id="sx"></p><button onclick="saveSettings()">Enregistrer</button></div><div class="card"><h2>Code de votre école</h2><p class="mut">Donnez ce code aux professeurs, parents et élèves : il leur faut pour créer leur compte. Vous validez ensuite chaque demande dans « Demandes d’inscription ».</p><p style="font:700 30px var(--serif);letter-spacing:.08em;margin:8px 0">${esc(CFG.join_code)}</p><button class="ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(CFG.join_code)}');this.textContent='Copié ✓'">Copier le code</button></div>${yearsCard()}`;
 }
 async function saveSettings(){const n=document.getElementById('sn2').value.trim(),yv=document.getElementById('sy').value.trim(),x=document.getElementById('sx');
  if(n.length<3)return x.textContent='Indiquez le nom de l’école.';
@@ -533,6 +539,40 @@ let AU={e:''};
 async function showAudit(){
  let q=SB.from('audit_log').select('*').order('created_at',{ascending:false}).limit(100);if(AU.e)q=q.eq('entity',AU.e);const{data}=await q;
  B().innerHTML=`<select onchange="AU.e=this.value;showAudit()"><option value="">Tout afficher</option>${Object.entries(AEN).map(([k,v])=>`<option value="${k}" ${k===AU.e?'selected':''}>${v}</option>`).join('')}</select>`+((data||[]).map(x=>`<div class="card"><b>${AAC[x.action]||esc(x.action)} · ${esc(AEN[x.entity]||x.entity)}</b><div class="mut">${esc(x.user_name||'Système')} · ${esc(new Date(x.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</div><details><summary class="mut">Détail</summary><div class="mut" style="word-break:break-all">${esc(x.details||'')}</div></details></div>`).join('')||'<p class="mut">Aucune action enregistrée pour l’instant.</p>')}
+
+/* Années scolaires, bulletin PDF, SMS absences, fiche élève */
+const inYR=d=>!YR||(d>=YR.starts_on&&d<=YR.ends_on),sumP=a=>sumA((a||[]).filter(x=>inYR(x.paid_on)));
+const yearsCard=()=>`<div class="card"><h2>Années scolaires</h2>${YRS.map(y=>`<div class="li" style="justify-content:space-between;align-items:center"><span><b>${esc(y.label)}</b> <span class="mut">· ${y.status==='active'?'en cours':'archivée'}</span></span>${YR&&YR.id===y.id?'<span class="mut">affichée</span>':`<button class="ghost sm" onclick="setYear('${y.id}')">Consulter</button>`}</div>`).join('')}<p class="mut">Clôturer l’année archive ses notes, absences et paiements (consultation seulement) et ouvre la suivante.</p><button class="ghost" onclick="closeYear()">Clôturer l’année et ouvrir la suivante</button></div>`;
+function setYear(id){YR=id?YRS.find(y=>y.id===id):(YRS.find(y=>y.status==='active')||YRS[0]);render()}
+async function closeYear(){const a=YRS.find(y=>y.status==='active');if(!a)return;if(!confirm('Clôturer l’année '+a.label+' ? Ses notes, absences et paiements deviendront non modifiables.'))return;
+ const y1=+a.label.slice(0,4)+1;if(!y1)return alert('Nom d’année invalide.');
+ let r=await SB.from('school_years').update({status:'archived'}).eq('id',a.id);if(r.error)return alert(r.error.message);
+ r=await SB.from('school_years').insert({label:`${y1}-${y1+1}`,starts_on:`${y1}-09-01`,ends_on:`${y1+1}-08-31`,status:'active'});if(r.error)return alert(r.error.message);
+ YR=null;await load()}
+function printBul(n){document.title='Bulletin - '+n;window.print();document.title='Carnet — Gestion d’école'}
+const REAS=['Maladie','Raison familiale','Transport','Autre'];
+const tel=p=>{p=String(p||'').replace(/\D/g,'');return p.length===9?'+224'+p:(p?'+'+p:'')};
+async function smsHtml(list,m){
+ const ab=list.filter(x=>m[x.id]);if(!ab.length)return'';
+ const{data}=await SB.from('student_guardians').select('student_id,guardians(phone)').in('student_id',ab.map(x=>x.id));
+ const ph=Object.fromEntries((data||[]).filter(x=>x.guardians?.phone).map(x=>[x.student_id,tel(x.guardians.phone)]));
+ return `<h2>Prévenir les parents par SMS</h2>`+ab.map(x=>{const r=m[x.id],p=ph[x.id],t=`Bonjour, ${x.first_name} était ${r.status==='absent'?'absent(e)':'en retard'} le ${new Date(AP.d+'T00:00').toLocaleDateString('fr-FR')} à ${CFG.school_name}. Merci de nous contacter si besoin.`;
+  return `<div class="card"><div class="top"><b>${esc(nm(x))}</b><span class="mut">${r.status==='absent'?'Absent':'Retard'}${r.parent_notified_at?' · prévenu ✓':''}</span></div>${p?`<a href="sms:${p}?body=${encodeURIComponent(t)}" onclick="smsDone('${r.id}')" style="display:block;text-align:center;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:8px;color:var(--ink);text-decoration:none;font-weight:600">Envoyer un SMS au ${esc(p)}</a>`:'<div class="mut">Aucun numéro de parent enregistré.</div>'}</div>`}).join('')}
+async function smsDone(id){await SB.from('attendance').update({parent_notified_at:new Date().toISOString()}).eq('id',id)}
+const openStu=id=>{SV=id;showStudents(me.role==='admin')};
+const ENS={new:'Nouvelle inscription',reenrolled:'Réinscrit',transferred:'Transféré',left:'Parti'};
+async function showStudentFile(id,adm){
+ const[R,C]=await Promise.all([SB.from('students').select('*,classes(name),student_guardians(guardians(first_name,last_name,phone))').eq('id',id).maybeSingle(),adm?SB.from('classes').select('id,name').order('name'):{data:[]}]);
+ const x=R.data;if(!x){SV=null;return showStudents(adm)}
+ const par=(x.student_guardians||[]).map(y=>y.guardians).filter(Boolean);
+ B().innerHTML=`<button class="ghost sm" onclick="SV=null;showStudents(${adm})">← Retour aux élèves</button><div class="card"><h2>${esc(nm(x))}</h2><div class="mut">${esc(x.classes?.name||'Sans classe')} · Matricule ${esc(x.matricule||'—')} · ${ENS[x.enrollment_status]}</div></div>`+
+ (adm?`<div class="card"><h2>Informations</h2><div class="row"><input id="ef" value="${esc(x.first_name)}" placeholder="Prénom"><input id="el" value="${esc(x.last_name)}" placeholder="Nom"></div><div class="row"><input id="em2" value="${esc(x.matricule||'')}" placeholder="Matricule"><select id="eg"><option value="">Sexe</option><option ${x.gender==='M'?'selected':''}>M</option><option ${x.gender==='F'?'selected':''}>F</option></select></div><label class="mut">Date de naissance<input id="eb" type="date" value="${esc(x.birth_date||'')}"></label><select id="ec2"><option value="">Sans classe</option>${(C.data||[]).map(c=>`<option value="${c.id}" ${c.id===x.class_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><input id="ea" value="${esc(x.address||'')}" placeholder="Adresse"><div class="row"><input id="en" value="${esc(x.emergency_name||'')}" placeholder="Contact d’urgence"><input id="ep" value="${esc(x.emergency_phone||'')}" placeholder="Téléphone d’urgence" inputmode="tel"></div><div class="row"><select id="es">${Object.entries(ENS).map(([k,v])=>`<option value="${k}" ${k===x.enrollment_status?'selected':''}>${v}</option>`).join('')}</select><label class="mut">Inscrit le<input id="ei" type="date" value="${esc(x.enrolled_on||'')}"></label></div><textarea id="eo" rows="3" maxlength="1000" placeholder="Notes">${esc(x.notes||'')}</textarea><p class="err" id="ex"></p><button onclick="saveStudent('${x.id}')">Enregistrer</button></div>`:
+ `<div class="card"><h2>Informations</h2><div class="mut">Naissance : ${esc(x.birth_date?new Date(x.birth_date+'T00:00').toLocaleDateString('fr-FR'):'—')}<br>Adresse : ${esc(x.address||'—')}<br>Contact d’urgence : ${esc(x.emergency_name||'—')} ${esc(x.emergency_phone||'')}</div></div>`)+
+ `<div class="card"><h2>Parents</h2>${par.map(p=>`<div class="li" style="justify-content:space-between"><span>${esc(nm(p))}</span><span class="mut">${esc(p.phone||'—')}</span></div>`).join('')||'<div class="mut">Aucun parent lié.</div>'}</div>`}
+async function saveStudent(id){const v=i=>document.getElementById(i).value.trim()||null,x=document.getElementById('ex');
+ if(!v('ef')||!v('el'))return x.textContent='Prénom et nom obligatoires.';
+ const{error}=await SB.from('students').update({first_name:v('ef'),last_name:v('el'),matricule:v('em2'),gender:v('eg'),birth_date:v('eb'),class_id:v('ec2'),address:v('ea'),emergency_name:v('en'),emergency_phone:v('ep'),enrollment_status:document.getElementById('es').value,enrolled_on:v('ei'),notes:v('eo')}).eq('id',id);
+ x.style.color=error?'':'var(--ok)';x.textContent=error?error.message:'Enregistré ✓'}
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 SB.auth.getSession().then(({data:{session}})=>session?load():authView());
 </script></body></html>
